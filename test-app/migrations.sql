@@ -1,0 +1,4 @@
+-- AI generated migration
+CREATE TABLE users (id serial PRIMARY KEY, email text);
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE posts DISABLE ROW LEVEL SECURITY;
