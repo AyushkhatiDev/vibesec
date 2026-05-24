@@ -13,7 +13,12 @@ vibesec.egg-info/requires.txt
 vibesec.egg-info/top_level.txt
 vibesec/rules/__init__.py
 vibesec/rules/auth_routes.py
+vibesec/rules/cors.py
+vibesec/rules/jwt.py
 vibesec/rules/packages.py
 vibesec/rules/rls.py
+vibesec/rules/roles.py
 vibesec/rules/secrets.py
 vibesec/rules/sourcemaps.py
+vibesec/rules/webhooks.py
+vibesec/rules/xss.py
