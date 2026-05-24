@@ -60,6 +60,13 @@ class Reporter:
         console.print(Panel(summary, title="[bold]FINDINGS SUMMARY[/bold]",
                            border_style="dim"))
 
+        # Generate AI fixes if requested
+        if fix:
+            from vibesec.fixgen import generate_fix
+            console.print("\n  [cyan]Generating AI fix suggestions...[/cyan]\n")
+            for finding in findings:
+                finding["groq_fix"] = generate_fix(finding)
+
         # Individual findings
         for i, finding in enumerate(findings, 1):
             severity = finding["severity"]
@@ -74,7 +81,9 @@ class Reporter:
             console.print(f"  [green]Fix:[/green]   {finding['fix_hint']}")
 
             if fix and finding.get("groq_fix"):
-                console.print(f"  [cyan]AI Fix:[/cyan] {finding['groq_fix']}")
+                console.print(
+                    f"  [cyan]AI Fix:[/cyan] {finding['groq_fix']}"
+                )
 
         # Footer
         console.print()
@@ -82,10 +91,11 @@ class Reporter:
             f"  [dim]{len(findings)} finding{'s' if len(findings) > 1 else ''} "
             f"in {path}[/dim]"
         )
-        console.print(
-            "  [dim]Run with [/dim][cyan]--fix[/cyan]"
-            "[dim] for AI-powered remediation suggestions[/dim]"
-        )
+        if not fix:
+            console.print(
+                "  [dim]Run with [/dim][cyan]--fix[/cyan]"
+                "[dim] for AI-powered remediation suggestions[/dim]"
+            )
         console.print()
 
     def print_json(self, findings):
