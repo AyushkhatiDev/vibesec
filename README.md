@@ -2,7 +2,7 @@
 
 **Security scanner for AI-generated code.**
 
-[![PyPI version](https://badge.fury.io/py/vibesec.svg)](https://badge.fury.io/py/vibesec)
+[![VibeSec v0.2.0](https://img.shields.io/badge/vibesec-v0.2.0-blue)](https://pypi.org/project/vibesec/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub stars](https://img.shields.io/github/stars/AyushkhatiDev/vibesec?style=social)](https://github.com/AyushkhatiDev/vibesec)
@@ -12,7 +12,7 @@
 ```
 $ vibesec scan ./my-cursor-app
 
-  VibeSec v0.1.0 — AI-Generated Code Security Scanner
+  VibeSec v0.2.0 — AI-Generated Code Security Scanner
 
   ● CRITICAL    7 findings
   ● HIGH        2 findings
@@ -106,12 +106,15 @@ Row Level Security disabled — any authenticated user can read or modify all da
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ```
 
+**3. SQL Injection Risk**
+SQL built via string concatenation, f-strings, or format interpolation instead of parameterized queries.
+
 ### 🟡 HIGH
 
-**3. Missing Route Authentication**
+**4. Missing Route Authentication**
 Admin and sensitive API routes scaffolded without authentication middleware. LLMs build the happy path without thinking about access control.
 
-**4. Hallucinated Packages**
+**5. Hallucinated Packages**
 npm packages that don't exist — a typosquatting attack surface. LLMs generate plausible-sounding package names that aren't real.
 
 ```json
@@ -120,20 +123,24 @@ npm packages that don't exist — a typosquatting attack surface. LLMs generate 
 "supabase-helpers": "^2.1.0"
 ```
 
-**5. Source Map Exposure**
+**6. Source Map Exposure**
 Build config exposes full source code via `.map` files in production.
+
+**7. Unsafe JWT Handling** — `none` algorithm, verification disabled, or tokens stored in web storage
+
+**8. Client-Side Role Trust** — Admin checks done using client-controlled values (localStorage/URL params)
+
+**9. Insecure Flask Configuration** — DEBUG mode, hardcoded SECRET_KEY, or weak fallback key
+
+**10. Credentials in Environment File** — Real API keys or DB URLs committed in `.env`
 
 ### 🟠 MEDIUM
 
-**6. Unsafe JWT Handling** — JWT decoded without verification, or `none` algorithm accepted
+**11. Unsafe HTML Injection (XSS)** — `dangerouslySetInnerHTML`, `innerHTML`, or `eval` with dynamic input
 
-**7. dangerouslySetInnerHTML** — Direct HTML injection without sanitization
+**12. Missing Webhook Verification** — Stripe/GitHub webhooks without signature check
 
-**8. Client-Side Role Trust** — Admin checks done using `localStorage` values
-
-**9. Missing Webhook Verification** — Stripe/GitHub webhooks without signature check
-
-**10. Permissive CORS** — Wildcard CORS with credentials enabled
+**13. Permissive CORS Configuration** — Wildcard CORS with credentials enabled
 
 ---
 
@@ -211,12 +218,18 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guide.
 - [x] Missing auth on routes
 - [x] Hallucinated package detector
 - [x] Source map exposure
-- [ ] JWT misuse rules
-- [ ] dangerouslySetInnerHTML
-- [ ] Client-side role trust
-- [ ] Webhook verification
-- [ ] Permissive CORS
+- [x] JWT misuse rules
+- [x] dangerouslySetInnerHTML XSS detection
+- [x] Client-side role trust
+- [x] Webhook verification
+- [x] Permissive CORS
+- [x] Flask SECRET_KEY and debug mode detection
+- [x] Credentials in .env files
+- [x] SQL injection patterns
+- [x] .vibesecignore support
+- [x] AI-powered fix suggestions (Groq)
 - [ ] GitHub Action marketplace listing
+- [ ] Scan public GitHub repos by URL
 - [ ] Web app (paste URL → get report)
 - [ ] SARIF output for GitHub Security tab
 - [ ] VS Code extension
