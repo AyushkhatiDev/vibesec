@@ -1,7 +1,10 @@
+LICENSE
 README.md
-setup.py
+pyproject.toml
+tests/test_rules.py
 vibesec/__init__.py
 vibesec/cli.py
+vibesec/fixgen.py
 vibesec/reporter.py
 vibesec/scanner.py
 vibesec/utils.py
@@ -14,11 +17,14 @@ vibesec.egg-info/top_level.txt
 vibesec/rules/__init__.py
 vibesec/rules/auth_routes.py
 vibesec/rules/cors.py
+vibesec/rules/env_secrets.py
+vibesec/rules/flask_secrets.py
 vibesec/rules/jwt.py
 vibesec/rules/packages.py
 vibesec/rules/rls.py
 vibesec/rules/roles.py
 vibesec/rules/secrets.py
 vibesec/rules/sourcemaps.py
+vibesec/rules/sql_injection.py
 vibesec/rules/webhooks.py
 vibesec/rules/xss.py
