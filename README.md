@@ -2,7 +2,7 @@
 
 **Security scanner for AI-generated code.**
 
-[![VibeSec v0.2.0](https://img.shields.io/badge/vibesec-v0.2.0-blue)](https://pypi.org/project/vibesec/)
+[![VibeSec v0.3.0](https://img.shields.io/badge/vibesec-v0.3.0-blue)](https://pypi.org/project/vibesec/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub stars](https://img.shields.io/github/stars/AyushkhatiDev/vibesec?style=social)](https://github.com/AyushkhatiDev/vibesec)
@@ -107,7 +107,19 @@ ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ```
 
 **3. SQL Injection Risk**
-SQL built via string concatenation, f-strings, or format interpolation instead of parameterized queries.
+AST-based taint analysis tracks user-controlled input from 30+ Flask/Django/FastAPI
+sources through Python call graphs to database sinks. Catches tainted f-strings,
+string concatenation, and format interpolation — while ignoring parameterized queries
+and sanitized values.
+
+```python
+# VibeSec catches this — tainted input reaches SQL sink
+query = f"SELECT * FROM users WHERE id = {request.args.get('id')}"
+cursor.execute(query)
+
+# VibeSec ignores this — parameterized, safe
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+```
 
 ### 🟡 HIGH
 
@@ -226,6 +238,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guide.
 - [x] Flask SECRET_KEY and debug mode detection
 - [x] Credentials in .env files
 - [x] SQL injection patterns
+- [x] AST-based taint analysis engine (Python)
+- [x] 74 automated tests with true positive/negative validation
 - [x] .vibesecignore support
 - [x] AI-powered fix suggestions (Groq)
 - [ ] GitHub Action marketplace listing
