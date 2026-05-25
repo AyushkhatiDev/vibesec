@@ -8,6 +8,9 @@ from vibesec.rules.xss import check_xss
 from vibesec.rules.roles import check_roles
 from vibesec.rules.webhooks import check_webhooks
 from vibesec.rules.cors import check_cors
+from vibesec.rules.flask_secrets import check_flask_secrets
+from vibesec.rules.env_secrets import check_env_secrets
+from vibesec.rules.sql_injection import check_sql_injection
 
 ALL_RULES = [
 	check_secrets,
@@ -20,4 +23,7 @@ ALL_RULES = [
 	check_roles,
 	check_webhooks,
 	check_cors,
+	check_flask_secrets,
+	check_env_secrets,
+	check_sql_injection,
 ]
