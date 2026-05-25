@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vibesec
-Version: 0.1.0
+Version: 0.2.0
 Summary: Security scanner for AI-generated code
 Author-email: Ayush Khati <ayushiskhati305@gmail.com>
 License: MIT License
