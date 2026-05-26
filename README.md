@@ -193,12 +193,12 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install VibeSec
-        run: pip install vibesec
+        run: pip install .
       - name: Run VibeSec Scan
         run: vibesec scan . --output sarif --sarif-output vibesec-results.sarif
         continue-on-error: true
       - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: vibesec-results.sarif
