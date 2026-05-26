@@ -1,9 +1,12 @@
 import json
+
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
+
+from vibesec import __version__
 
 console = Console()
 
@@ -22,7 +25,7 @@ class Reporter:
     def print_banner(self):
         console.print()
         console.print(Panel(
-            "[bold cyan]VibeSec v0.1.0[/bold cyan] — [dim]AI-Generated Code Security Scanner[/dim]",
+            f"[bold cyan]VibeSec v{__version__}[/bold cyan] — [dim]AI-Generated Code Security Scanner[/dim]",
             border_style="cyan",
             expand=False
         ))
