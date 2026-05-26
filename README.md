@@ -72,6 +72,16 @@ vibesec scan ./my-project --fix
 vibesec scan ./my-project --output json
 ```
 
+**Export as SARIF (for GitHub Security tab):**
+```bash
+vibesec scan ./my-project --output sarif
+```
+
+**Custom SARIF output path:**
+```bash
+vibesec scan ./my-project --output sarif --sarif-output results.sarif
+```
+
 **Filter by severity:**
 ```bash
 vibesec scan ./my-project --severity critical
@@ -158,27 +168,56 @@ Build config exposes full source code via `.map` files in production.
 
 ## GitHub Actions Integration
 
-Add VibeSec to your CI/CD pipeline:
+Add VibeSec to your CI/CD pipeline with SARIF output — findings appear directly in GitHub's **Security tab** as inline code annotations:
 
 ```yaml
 # .github/workflows/vibesec.yml
 name: VibeSec Security Scan
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  security-events: write
+  contents: read
 
 jobs:
-  security:
+  vibesec:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install VibeSec
         run: pip install vibesec
-      - name: Run Security Scan
-        run: vibesec scan . --output json --severity high
+      - name: Run VibeSec Scan
+        run: vibesec scan . --output sarif --sarif-output vibesec-results.sarif
+        continue-on-error: true
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: vibesec-results.sarif
+          category: vibesec
 ```
+
+> **Note:** The `upload-sarif` action requires GitHub Advanced Security to be enabled (free for public repositories).
+
+---
+
+## GitHub Security Tab
+
+When using SARIF output with the GitHub Action above, VibeSec findings appear natively in:
+
+- **Security → Code scanning alerts** — filterable dashboard of all findings
+- **Pull request annotations** — inline warnings on the exact lines with vulnerabilities
+- **Security overview** — aggregate view across your organization
+
+Each finding includes the rule ID (e.g. `VS001`), severity level, the offending code snippet, and a fix suggestion.
 
 ---
 
@@ -242,10 +281,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guide.
 - [x] 74 automated tests with true positive/negative validation
 - [x] .vibesecignore support
 - [x] AI-powered fix suggestions (Groq)
+- [x] SARIF output for GitHub Security tab
+- [x] GitHub Action with SARIF upload
 - [ ] GitHub Action marketplace listing
 - [ ] Scan public GitHub repos by URL
 - [ ] Web app (paste URL → get report)
-- [ ] SARIF output for GitHub Security tab
 - [ ] VS Code extension
 
 ---

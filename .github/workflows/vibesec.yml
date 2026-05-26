@@ -1,0 +1,49 @@
+# VibeSec — Security Scanner for AI-Generated Code
+#
+# This workflow scans your codebase for security vulnerabilities
+# commonly introduced by AI coding tools (Cursor, Claude Code, Bolt, etc.)
+# and uploads results to GitHub's Security tab as inline code annotations.
+#
+# Requirements:
+#   - GitHub Advanced Security must be enabled (free for public repos)
+#   - See: https://github.com/AyushkhatiDev/vibesec
+
+name: VibeSec Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  security-events: write   # Required for upload-sarif
+  contents: read
+
+jobs:
+  vibesec:
+    name: VibeSec Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install VibeSec
+        run: pip install vibesec
+
+      - name: Run VibeSec scan
+        run: vibesec scan . --output sarif --sarif-output vibesec-results.sarif
+        continue-on-error: true   # Don't fail the step; upload results regardless
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: vibesec-results.sarif
+          category: vibesec
