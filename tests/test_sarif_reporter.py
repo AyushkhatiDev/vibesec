@@ -99,7 +99,7 @@ def test_sarif_single_finding():
     result = results[0]
     assert result["ruleId"] == "VS001"
     assert result["level"] == "error"
-    assert result["message"]["text"] == "Hardcoded API key detected in source code"
+    assert "Hardcoded API key detected in source code" in result["message"]["text"]
 
     loc = result["locations"][0]["physicalLocation"]
     assert loc["artifactLocation"]["uri"] == "src/config.py"
@@ -222,12 +222,35 @@ def test_sarif_no_snippet_when_missing():
 
 # ── Fix hint as SARIF fix ───────────────────────────────────────────────────
 
-def test_sarif_fix_hint_included():
+def test_sarif_fix_hint_in_message():
     findings = [_make_finding(fix_hint="Use env variables.")]
     sarif = generate_sarif(findings, scan_root="/project")
     result = sarif["runs"][0]["results"][0]
-    assert "fixes" in result
-    assert result["fixes"][0]["description"]["text"] == "Use env variables."
+    # Fix hint is appended to message text, not in a separate fixes field
+    assert "Fix: Use env variables." in result["message"]["text"]
+    assert "fixes" not in result
+
+
+def test_sarif_line_none_defaults_to_1():
+    """Findings with line=None should get startLine=1, not None."""
+    findings = [_make_finding(line=None)]
+    sarif = generate_sarif(findings, scan_root="/project")
+    start_line = sarif["runs"][0]["results"][0]["locations"][0][
+        "physicalLocation"
+    ]["region"]["startLine"]
+    assert start_line == 1
+    assert isinstance(start_line, int)
+
+
+def test_sarif_line_string_defaults_to_1():
+    """Findings with line as a string should get startLine=1."""
+    findings = [_make_finding(line="N/A")]
+    sarif = generate_sarif(findings, scan_root="/project")
+    start_line = sarif["runs"][0]["results"][0]["locations"][0][
+        "physicalLocation"
+    ]["region"]["startLine"]
+    assert start_line == 1
+    assert isinstance(start_line, int)
 
 
 # ── File I/O ────────────────────────────────────────────────────────────────
