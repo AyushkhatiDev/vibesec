@@ -251,11 +251,22 @@ def generate_sarif(findings: list, scan_root: str = ".") -> dict:
         rule_meta = _lookup_rule(finding["rule"])
         level = _severity_to_sarif_level(finding["severity"])
 
+        # Build message text — include fix hint if available
+        message_text = finding["message"]
+        fix_hint = finding.get("fix_hint")
+        if fix_hint:
+            message_text = f"{message_text}\nFix: {fix_hint}"
+
+        # Ensure startLine is always a positive integer
+        line = finding.get("line")
+        if not isinstance(line, int) or line < 1:
+            line = 1
+
         result = {
             "ruleId": rule_meta["id"],
             "ruleIndex": rule_index_map.get(finding["rule"], 0),
             "level": level,
-            "message": {"text": finding["message"]},
+            "message": {"text": message_text},
             "locations": [
                 {
                     "physicalLocation": {
@@ -264,7 +275,7 @@ def generate_sarif(findings: list, scan_root: str = ".") -> dict:
                             "uriBaseId": "%SRCROOT%",
                         },
                         "region": {
-                            "startLine": finding.get("line", 1),
+                            "startLine": line,
                         },
                     }
                 }
@@ -277,15 +288,6 @@ def generate_sarif(findings: list, scan_root: str = ".") -> dict:
             result["locations"][0]["physicalLocation"]["region"][
                 "snippet"
             ] = {"text": snippet}
-
-        # Include fix hint as a fix suggestion
-        fix_hint = finding.get("fix_hint")
-        if fix_hint:
-            result["fixes"] = [
-                {
-                    "description": {"text": fix_hint},
-                }
-            ]
 
         results.append(result)
 
