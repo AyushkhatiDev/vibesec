@@ -4,8 +4,9 @@ from vibesec.rules import ALL_RULES
 
 class Scanner:
 
-    def __init__(self, path):
+    def __init__(self, path, display_path=None):
         self.path = path
+        self.display_path = display_path
 
     def run(self):
         findings = []
@@ -21,5 +22,10 @@ class Scanner:
                     findings.extend(results)
                 except Exception:
                     pass
+
+        # Clean up temp paths for GitHub URL scans
+        if self.display_path and self.display_path != self.path:
+            for finding in findings:
+                finding["file"] = finding["file"].replace(self.path, self.display_path)
 
         return findings
