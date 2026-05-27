@@ -28,6 +28,10 @@ htmlcov/
 .env
 .env.*
 
+# App artifacts
+test-app/
+*.sarif
+
 # OS files
 .DS_Store
 
