@@ -4,6 +4,7 @@ pyproject.toml
 tests/test_rules.py
 tests/test_sarif_reporter.py
 tests/test_taint_tracker.py
+tests/test_utils.py
 vibesec/__init__.py
 vibesec/cli.py
 vibesec/fixgen.py
