@@ -253,6 +253,18 @@ def test_webhooks_skips_files_without_webhook():
     findings = check_webhooks("utils.js", content)
     assert len(findings) == 0
 
+def test_webhooks_skips_abstract_stub_methods():
+    content = """
+from abc import ABC, abstractmethod
+
+class Handler(ABC):
+    @abstractmethod
+    def handle_webhook_payload(self, payload):
+        pass
+"""
+    findings = check_webhooks("handlers.py", content)
+    assert len(findings) == 0
+
 
 #   CORS          
 

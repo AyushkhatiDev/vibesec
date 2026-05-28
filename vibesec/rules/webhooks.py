@@ -24,6 +24,10 @@ SAFE_INDICATORS = [
     "verifySignature",
     "crypto.timingSafeEqual",
     "hmac",
+    "abstractmethod",
+    "raise NotImplementedError",
+    "pass",
+    "@abstract",
 ]
 
 SKIP_FILES = {"README.md", "readme.md"}
@@ -62,7 +66,32 @@ def check_webhooks(file_path, content):
                     for indicator in SAFE_INDICATORS
                 )
 
-                if not is_safe:
+                is_stub = False
+                for idx, context_line in enumerate(surrounding.splitlines()):
+                    context_stripped = context_line.strip()
+                    if context_stripped.startswith("def ") or context_stripped.startswith("async def "):
+                        for body_line in surrounding.splitlines()[idx + 1:]:
+                            body_stripped = body_line.strip()
+                            if not body_stripped or body_stripped.startswith("#"):
+                                continue
+                            if body_stripped in {
+                                "pass",
+                                "raise NotImplementedError",
+                                "raise NotImplementedError()",
+                            }:
+                                is_stub = True
+                            break
+                        if is_stub:
+                            break
+
+                is_abstract = any(phrase in surrounding for phrase in [
+                    "abstractmethod",
+                    "raise NotImplementedError",
+                    "@abc.abstractmethod",
+                    "ABC",
+                ])
+
+                if not is_safe and not is_abstract and not is_stub:
                     findings.append({
                         "rule": RULE_NAME,
                         "severity": SEVERITY,
