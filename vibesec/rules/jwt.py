@@ -6,7 +6,7 @@ SEVERITY = "HIGH"
 PATTERNS = [
     (r'jwt\.decode\s*\([^)]*algorithms\s*=\s*\[["\']none["\']\]',
      "JWT accepts 'none' algorithm — critical auth bypass"),
-    (r'verify\s*=\s*False',
+    (r'jwt\.decode\s*\([^)]*verify\s*=\s*False',
      "JWT verification explicitly disabled"),
     (r'localStorage\.setItem\s*\([^)]*token',
      "JWT stored in localStorage — vulnerable to XSS theft"),

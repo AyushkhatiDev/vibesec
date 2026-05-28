@@ -15,21 +15,82 @@ SKIP_DIRS = {
     ".mypy_cache",
 }
 
+DEFAULT_IGNORE = SKIP_DIRS
+
+SUPPORTED_EXTENSIONS = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".sql",
+}
+
+
+def load_ignore_patterns(path):
+    """Load patterns from .vibesecignore in the root directory."""
+    if not path:
+        return []
+    if os.path.isfile(path):
+        directory = os.path.dirname(path)
+    else:
+        directory = path
+    ignore_file = os.path.join(directory, ".vibesecignore")
+    if not os.path.exists(ignore_file):
+        return []
+    patterns = []
+    try:
+        with open(ignore_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    patterns.append(line)
+    except Exception:
+        pass
+    return patterns
+
 
 def walk_files(path):
-    """Yield file paths under the given path, skipping common dependency dirs."""
     if not path:
         return
     if os.path.isfile(path):
-        yield path
-        return
-    if not os.path.isdir(path):
+        if not os.path.islink(path):
+            yield path
         return
 
+    real_root = os.path.realpath(path)
+
     for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        for filename in files:
-            yield os.path.join(root, filename)
+        dirs[:] = [d for d in dirs if d not in DEFAULT_IGNORE]
+
+        rel_root = os.path.relpath(root, path)
+        skip = False
+        for pattern in load_ignore_patterns(path):
+            if rel_root == pattern or rel_root.startswith(pattern):
+                skip = True
+                break
+        if skip:
+            dirs[:] = []
+            continue
+
+        for file in files:
+            full_path = os.path.join(root, file)
+
+            # Skip symlinks — prevents host file exfiltration
+            if os.path.islink(full_path):
+                continue
+
+            # Path containment check
+            real_path = os.path.realpath(full_path)
+            if not real_path.startswith(real_root + os.sep):
+                continue
+
+            ext = os.path.splitext(file)[1].lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                yield full_path
 
 
 def read_file(file_path):

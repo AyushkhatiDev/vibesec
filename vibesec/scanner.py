@@ -1,5 +1,8 @@
+import logging
 from vibesec.utils import walk_files, read_file
 from vibesec.rules import ALL_RULES
+
+logger = logging.getLogger(__name__)
 
 
 class Scanner:
@@ -20,8 +23,8 @@ class Scanner:
                 try:
                     results = rule(file_path, content)
                     findings.extend(results)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Rule {rule.__name__} failed on {file_path}: {e}")
 
         # Clean up temp paths for GitHub URL scans
         if self.display_path and self.display_path != self.path:

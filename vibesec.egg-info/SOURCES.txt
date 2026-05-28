@@ -2,11 +2,15 @@ LICENSE
 README.md
 pyproject.toml
 tests/test_rules.py
+tests/test_sarif_reporter.py
+tests/test_taint_tracker.py
 vibesec/__init__.py
 vibesec/cli.py
 vibesec/fixgen.py
 vibesec/reporter.py
+vibesec/sarif_reporter.py
 vibesec/scanner.py
+vibesec/taint_tracker.py
 vibesec/utils.py
 vibesec.egg-info/PKG-INFO
 vibesec.egg-info/SOURCES.txt
