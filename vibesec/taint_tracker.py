@@ -30,6 +30,12 @@ TAINT_SOURCE_ATTRS = {
     ("request", "POST"),
     ("request", "body"),
     ("request", "META"),
+    ("request", "FILES"),
+    ("request", "COOKIES"),
+    ("django.request", "GET"),
+    ("django.request", "POST"),
+    ("django.request", "FILES"),
+    ("django.request", "COOKIES"),
     # FastAPI / Starlette
     ("request", "query_params"),
     ("request", "path_params"),
@@ -39,6 +45,16 @@ TAINT_SOURCE_ATTRS = {
 # Call-style sources: func(...)  (e.g. input(), sys.stdin.read())
 TAINT_SOURCE_CALLS = {
     "input",
+    "Query",
+    "Path",
+    "Body",
+    "Header",
+    "Cookie",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
 }
 
 # Full dotted call sources
@@ -47,6 +63,10 @@ TAINT_SOURCE_DOTTED_CALLS = {
     "sys.stdin.readline",
     "request.get_json",
     "request.get_data",
+    "websocket.receive",
+    "websocket.receive_text",
+    "websocket.receive_json",
+    "os.getenv",
 }
 
 # Subscript sources: obj[key] or obj.get(key)
@@ -57,8 +77,17 @@ TAINT_SOURCE_SUBSCRIPTS = {
     "request.json",
     "request.headers",
     "request.cookies",
+    "flask.request.cookies",
+    "flask.request.headers",
+    "flask.request.files",
     "request.GET",
     "request.POST",
+    "request.FILES",
+    "request.COOKIES",
+    "django.request.GET",
+    "django.request.POST",
+    "django.request.FILES",
+    "django.request.COOKIES",
     "os.environ",
     "sys.argv",
 }
@@ -94,6 +123,42 @@ SQL_SINK_DOTTED = {
 # Functions that when called with a tainted arg are sinks
 SQL_SINK_FUNCS = {
     "text",  # sqlalchemy text()
+}
+
+COMMAND_SINKS = {
+    "os.system",
+    "subprocess.call",
+    "subprocess.run",
+    "subprocess.Popen",
+    "os.popen",
+    "eval",
+    "exec",
+    "child_process.exec",
+}
+
+PATH_SINKS = {
+    "open",
+    "pathlib.Path",
+    "Path",
+    "send_file",
+    "flask.send_file",
+    "os.path.join",
+}
+
+SSRF_SINKS = {
+    "requests.get",
+    "requests.post",
+    "requests.put",
+    "requests.delete",
+    "urllib.urlopen",
+    "urllib.request.urlopen",
+    "httpx.get",
+    "httpx.post",
+    "httpx.put",
+    "httpx.delete",
+    "fetch",
+    "axios.get",
+    "axios.post",
 }
 
 # ─── Sanitizers ──────────────────────────────────────────────────────────────
@@ -140,7 +205,7 @@ class TaintFinding:
 
     __slots__ = (
         "sink_line", "sink_code", "source_line", "source_desc",
-        "sink_desc", "tainted_var",
+        "sink_desc", "tainted_var", "vulnerability", "severity",
     )
 
     def __init__(
@@ -151,6 +216,8 @@ class TaintFinding:
         source_desc: str,
         sink_desc: str,
         tainted_var: str,
+        vulnerability: str = "sql",
+        severity: str = "CRITICAL",
     ):
         self.sink_line = sink_line
         self.sink_code = sink_code
@@ -158,6 +225,8 @@ class TaintFinding:
         self.source_desc = source_desc
         self.sink_desc = sink_desc
         self.tainted_var = tainted_var
+        self.vulnerability = vulnerability
+        self.severity = severity
 
 
 # ─── AST Helpers ─────────────────────────────────────────────────────────────
@@ -541,6 +610,36 @@ class TaintTracker(ast.NodeVisitor):
         elif isinstance(query_arg, ast.BinOp) and isinstance(query_arg.op, ast.Mod):
             self._flag_unsafe_query_construction(node, query_arg, "% formatting")
 
+    def _check_additional_sinks(self, node: ast.Call):
+        """Track tainted input into non-SQL security sinks."""
+        call_name = _get_call_name(node)
+        if not call_name or not node.args:
+            return
+
+        sink_sets = [
+            (COMMAND_SINKS, "command", "CRITICAL", "Tainted data reaches command execution sink"),
+            (PATH_SINKS, "path", "HIGH", "Tainted data reaches filesystem path sink"),
+            (SSRF_SINKS, "ssrf", "HIGH", "Tainted data reaches outbound request sink"),
+        ]
+
+        for sinks, vulnerability, severity, description in sink_sets:
+            if call_name not in sinks:
+                continue
+            for arg in node.args:
+                taint = self._expr_is_tainted(arg)
+                if taint:
+                    self.findings.append(TaintFinding(
+                        sink_line=_source_line(node),
+                        sink_code=self._get_line_text(_source_line(node)),
+                        source_line=taint.source_line,
+                        source_desc=taint.source_desc,
+                        sink_desc=f"{description}: {call_name}()",
+                        tainted_var=taint.name,
+                        vulnerability=vulnerability,
+                        severity=severity,
+                    ))
+                    return
+
     def _flag_unsafe_query_construction(
         self, call_node: ast.Call, query_node: ast.AST, method: str
     ):
@@ -695,6 +794,7 @@ class TaintTracker(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call):
         """Check every call for SQL sinks."""
         self._check_sql_sink(node)
+        self._check_additional_sinks(node)
         self.generic_visit(node)
 
     def visit_Expr(self, node: ast.Expr):

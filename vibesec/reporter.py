@@ -1,9 +1,9 @@
 import json
+from collections import defaultdict
 
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.text import Text
 from rich import box
 
 from vibesec import __version__
@@ -31,12 +31,18 @@ class Reporter:
         ))
         console.print()
 
-    def print_report(self, findings, path, fix=False):
+    def print_report(self, findings, path, fix=False, files_scanned=None, duration=None):
+        from vibesec.rules import ALL_RULES
+
         if not findings:
-            from vibesec.rules import ALL_RULES
+            details = f"VibeSec checked {len(ALL_RULES)} vulnerability patterns."
+            if files_scanned is not None:
+                details += f"\nFiles scanned: {files_scanned}"
+            if duration is not None:
+                details += f"\nScan duration: {duration:.2f}s"
             console.print(Panel(
                 "[bold green]✓ No vulnerabilities found![/bold green]\n"
-                f"[dim]VibeSec checked {len(ALL_RULES)} vulnerability patterns.[/dim]",
+                f"[dim]{details}[/dim]",
                 border_style="green"
             ))
             return
@@ -48,6 +54,22 @@ class Reporter:
         counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for f in findings:
             counts[f["severity"]] = counts.get(f["severity"], 0) + 1
+
+        risk_score = (
+            counts.get("CRITICAL", 0) * 10
+            + counts.get("HIGH", 0) * 5
+            + counts.get("MEDIUM", 0) * 2
+            + counts.get("LOW", 0)
+        )
+        risk_color = "green" if risk_score < 10 else "yellow" if risk_score <= 30 else "red"
+
+        by_file = defaultdict(list)
+        for finding in findings:
+            by_file[finding["file"]].append(finding)
+        most_vulnerable_file, most_vulnerable_findings = max(
+            by_file.items(),
+            key=lambda item: len(item[1]),
+        )
 
         summary = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
         summary.add_column(style="bold")
@@ -61,6 +83,14 @@ class Reporter:
                     f"[{color}]{count} finding{'s' if count > 1 else ''}[/{color}]"
                 )
 
+        summary.add_row(f"[{risk_color}]Risk score[/{risk_color}]", f"[{risk_color}]{risk_score}[/{risk_color}]")
+        if files_scanned is not None:
+            summary.add_row("Files scanned", str(files_scanned))
+        if duration is not None:
+            summary.add_row("Scan duration", f"{duration:.2f}s")
+        summary.add_row("Rules checked", str(len(ALL_RULES)))
+        summary.add_row("Most vulnerable file", f"{most_vulnerable_file} ({len(most_vulnerable_findings)})")
+
         console.print(Panel(summary, title="[bold]FINDINGS SUMMARY[/bold]",
                            border_style="dim"))
 
@@ -71,23 +101,19 @@ class Reporter:
             for finding in findings:
                 finding["groq_fix"] = generate_fix(finding)
 
-        # Individual findings
-        for i, finding in enumerate(findings, 1):
-            severity = finding["severity"]
-            color = SEVERITY_COLORS[severity]
-
+        # Findings grouped by file
+        for file_path in sorted(by_file):
             console.print()
-            console.print(f"  [{color}]{severity}[/{color}] — "
-                         f"[bold white]{finding['rule']}[/bold white]")
-            console.print(f"  [dim]File: {finding['file']}  "
-                         f"Line: {finding.get('line', 'N/A')}[/dim]")
-            console.print(f"  [red]Found:[/red] {finding['message']}")
-            console.print(f"  [green]Fix:[/green]   {finding['fix_hint']}")
+            console.print(f"  [bold white]{file_path}[/bold white]")
+            for finding in by_file[file_path]:
+                severity = finding["severity"]
+                color = SEVERITY_COLORS[severity]
+                console.print(f"    [{color}]{severity}[/{color}] — [bold]{finding['rule']}[/bold] line {finding.get('line', 'N/A')}")
+                console.print(f"    [red]Found:[/red] {finding['message']}")
+                console.print(f"    [green]Fix:[/green]   {finding['fix_hint']}")
 
-            if fix and finding.get("groq_fix"):
-                console.print(
-                    f"  [cyan]AI Fix:[/cyan] {finding['groq_fix']}"
-                )
+                if fix and finding.get("groq_fix"):
+                    console.print(f"    [cyan]AI Fix:[/cyan] {finding['groq_fix']}")
 
         # Footer
         console.print()
