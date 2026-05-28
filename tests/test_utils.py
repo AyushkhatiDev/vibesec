@@ -2,7 +2,7 @@ import os
 import tempfile
 import shutil
 import pytest
-from vibesec.utils import walk_files, load_ignore_patterns
+from vibesec.utils import MAX_FILE_SIZE, _parse_github_repo, read_file, walk_files, load_ignore_patterns
 
 
 @pytest.fixture
@@ -70,3 +70,30 @@ def test_walk_files_obeys_vibesecignore(temp_workspace):
     files = list(walk_files(temp_workspace))
     assert app_py in files
     assert ignored_py not in files  # Should be ignored because ignored_dir is in .vibesecignore
+
+
+def test_read_file_skips_large_files(temp_workspace):
+    large_file = os.path.join(temp_workspace, "large.py")
+    with open(large_file, "wb") as f:
+        f.seek(MAX_FILE_SIZE + 1)
+        f.write(b"x")
+    assert read_file(large_file) == ""
+
+
+def test_walk_files_skips_binary_with_text_extension(temp_workspace):
+    binary_file = os.path.join(temp_workspace, "binary.py")
+    with open(binary_file, "wb") as f:
+        f.write(b"\x00\x01\x02")
+    assert binary_file not in list(walk_files(temp_workspace))
+
+
+def test_github_url_validation_accepts_owner_repo():
+    owner, repo, clone_url = _parse_github_repo("https://github.com/AyushkhatiDev/vibesec.git")
+    assert owner == "AyushkhatiDev"
+    assert repo == "vibesec"
+    assert clone_url == "https://github.com/AyushkhatiDev/vibesec"
+
+
+def test_github_url_validation_rejects_extra_path():
+    with pytest.raises(ValueError):
+        _parse_github_repo("https://github.com/owner/repo/issues")

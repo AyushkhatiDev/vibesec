@@ -3,6 +3,7 @@ import re
 import shutil
 import tempfile
 import subprocess
+from functools import lru_cache
 from urllib.parse import urlparse
 
 import requests
@@ -18,6 +19,8 @@ SKIP_DIRS = {
     "build",
     ".pytest_cache",
     ".mypy_cache",
+    "tests",
+    "test-app",
 }
 
 DEFAULT_IGNORE = SKIP_DIRS
@@ -36,6 +39,72 @@ SUPPORTED_EXTENSIONS = {
     ".yml",
     ".sql",
 }
+
+SUPPORTED_FILENAMES = {
+    "Dockerfile",
+    "dockerfile",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yml",
+    "compose.yaml",
+}
+
+TEXT_MAGIC_PREFIXES = (
+    b"#!",
+    b"import ",
+    b"from ",
+    b"const ",
+    b"let ",
+    b"var ",
+    b"function ",
+    b"{",
+    b"[",
+    b"---",
+)
+
+
+def _effective_max_file_size(max_file_size=None):
+    return MAX_FILE_SIZE if max_file_size is None else int(max_file_size)
+
+
+def _is_supported_file(file_name):
+    if file_name in SUPPORTED_FILENAMES or file_name.lower() in SUPPORTED_FILENAMES:
+        return True
+    ext = os.path.splitext(file_name)[1].lower()
+    return ext in SUPPORTED_EXTENSIONS
+
+
+def is_binary_file(file_path):
+    """Detect binary files using magic bytes and null bytes."""
+    try:
+        with open(file_path, "rb") as handle:
+            chunk = handle.read(4096)
+    except OSError:
+        return True
+    if not chunk:
+        return False
+    if b"\x00" in chunk:
+        return True
+    if chunk.startswith(TEXT_MAGIC_PREFIXES):
+        return False
+    try:
+        chunk.decode("utf-8")
+        return False
+    except UnicodeDecodeError:
+        return True
+
+
+def _matches_exclude(path, root, exclude_paths):
+    if not exclude_paths:
+        return False
+    rel = os.path.relpath(path, root).replace("\\", "/")
+    for pattern in exclude_paths:
+        normalized = str(pattern).strip().strip("/").replace("\\", "/")
+        if not normalized:
+            continue
+        if rel == normalized or rel.startswith(normalized + "/"):
+            return True
+    return False
 
 
 def load_ignore_patterns(path):
@@ -61,25 +130,38 @@ def load_ignore_patterns(path):
     return patterns
 
 
-def walk_files(path):
+@lru_cache(maxsize=64)
+def _walk_files_cached(path, exclude_paths=(), max_file_size=None):
     if not path:
-        return
+        return tuple()
+    max_size = _effective_max_file_size(max_file_size)
     if os.path.isfile(path):
         try:
-            if not os.path.islink(path) and os.path.getsize(path) <= MAX_FILE_SIZE:
-                yield path
+            if (
+                not os.path.islink(path)
+                and os.path.getsize(path) <= max_size
+                and _is_supported_file(os.path.basename(path))
+                and not is_binary_file(path)
+            ):
+                return (path,)
         except OSError:
-            return
-        return
+            return tuple()
+        return tuple()
 
     real_root = os.path.realpath(path)
+    found = []
+    ignore_patterns = tuple(load_ignore_patterns(path))
 
     for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if d not in DEFAULT_IGNORE]
+        dirs[:] = [
+            d for d in dirs
+            if d not in DEFAULT_IGNORE
+            and not _matches_exclude(os.path.join(root, d), path, exclude_paths)
+        ]
 
         rel_root = os.path.relpath(root, path)
         skip = False
-        for pattern in load_ignore_patterns(path):
+        for pattern in ignore_patterns:
             if rel_root == pattern or rel_root.startswith(pattern):
                 skip = True
                 break
@@ -100,20 +182,31 @@ def walk_files(path):
                 continue
 
             try:
-                if os.path.getsize(real_path) > MAX_FILE_SIZE:
+                if os.path.getsize(real_path) > max_size:
                     continue
             except OSError:
                 continue
 
-            ext = os.path.splitext(file)[1].lower()
-            if ext in SUPPORTED_EXTENSIONS:
-                yield full_path
+            if _matches_exclude(full_path, path, exclude_paths):
+                continue
+
+            if _is_supported_file(file) and not is_binary_file(real_path):
+                found.append(full_path)
+
+    return tuple(found)
+
+
+def walk_files(path, exclude_paths=None, max_file_size=None):
+    exclude_key = tuple(sorted(exclude_paths or ()))
+    yield from _walk_files_cached(os.path.abspath(path), exclude_key, max_file_size)
 
 
 def read_file(file_path):
     """Read a file as UTF-8 text; return empty string for unreadable/binary."""
     try:
         if os.path.getsize(file_path) > MAX_FILE_SIZE:
+            return ""
+        if is_binary_file(file_path):
             return ""
         with open(file_path, "rb") as handle:
             data = handle.read()

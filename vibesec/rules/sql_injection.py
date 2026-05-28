@@ -73,6 +73,8 @@ def check_sql_injection(file_path, content):
             taint_findings = analyze_taint(file_path, content)
 
             for tf in taint_findings:
+                if getattr(tf, "vulnerability", "sql") != "sql":
+                    continue
                 findings.append({
                     "rule": RULE_NAME,
                     "severity": SEVERITY,
