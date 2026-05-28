@@ -1,6 +1,8 @@
+import os
 import click
 from rich.console import Console
 
+from vibesec import __version__
 from vibesec.reporter import Reporter
 from vibesec.scanner import Scanner
 from vibesec.utils import is_github_url
@@ -9,6 +11,7 @@ console = Console()
 
 
 @click.group()
+@click.version_option(version=__version__, prog_name="vibesec")
 def cli():
     """VibeSec command-line interface."""
 
@@ -19,7 +22,8 @@ def cli():
 @click.option("--output", type=click.Choice(["terminal", "json", "sarif"]), default="terminal")
 @click.option("--severity", type=click.Choice(["critical", "high", "medium", "low"]), default=None)
 @click.option("--sarif-output", default="vibesec-results.sarif", help="SARIF output file path")
-def scan(path, fix, output, severity, sarif_output):
+@click.option("--ignore", default="", help="Comma-separated rules to ignore e.g. rls,cors")
+def scan(path, fix, output, severity, sarif_output, ignore):
     """Scan a directory, file, or GitHub repository URL."""
 
     reporter = Reporter()
@@ -40,9 +44,20 @@ def scan(path, fix, output, severity, sarif_output):
     else:
         scan_path = path
 
+    if not os.path.exists(scan_path):
+        console.print(f"[red]Error: Path '{scan_path}' does not exist.[/red]")
+        return
+
     try:
         scanner = Scanner(scan_path, display_path=path)
         findings = scanner.run()
+
+        if ignore:
+            ignore_list = [r.strip().lower() for r in ignore.split(",") if r.strip()]
+            findings = [
+                f for f in findings
+                if not any(ig in f["rule"].lower() for ig in ignore_list)
+            ]
 
         if severity:
             findings = [f for f in findings if f["severity"].lower() == severity]

@@ -8,15 +8,8 @@ SEVERITY = "HIGH"
 # Known hallucinated package names LLMs commonly generate
 KNOWN_HALLUCINATED = {
     "react-auth-handler",
-    "supabase-helpers",
-    "express-middleware-auth",
-    "nextjs-utils",
-    "react-secure-storage",
-    "express-auth-jwt",
     "node-security-utils",
-    "react-api-handler",
     "next-auth-helpers",
-    "prisma-utils",
 }
 
 

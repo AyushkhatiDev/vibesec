@@ -1,6 +1,11 @@
 import os
+import re
+import shutil
 import tempfile
 import subprocess
+from urllib.parse import urlparse
+
+import requests
 
 
 SKIP_DIRS = {
@@ -16,6 +21,9 @@ SKIP_DIRS = {
 }
 
 DEFAULT_IGNORE = SKIP_DIRS
+
+MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_GITHUB_REPO_SIZE_KB = 500 * 1024
 
 SUPPORTED_EXTENSIONS = {
     ".py",
@@ -57,8 +65,11 @@ def walk_files(path):
     if not path:
         return
     if os.path.isfile(path):
-        if not os.path.islink(path):
-            yield path
+        try:
+            if not os.path.islink(path) and os.path.getsize(path) <= MAX_FILE_SIZE:
+                yield path
+        except OSError:
+            return
         return
 
     real_root = os.path.realpath(path)
@@ -88,6 +99,12 @@ def walk_files(path):
             if not real_path.startswith(real_root + os.sep):
                 continue
 
+            try:
+                if os.path.getsize(real_path) > MAX_FILE_SIZE:
+                    continue
+            except OSError:
+                continue
+
             ext = os.path.splitext(file)[1].lower()
             if ext in SUPPORTED_EXTENSIONS:
                 yield full_path
@@ -96,6 +113,8 @@ def walk_files(path):
 def read_file(file_path):
     """Read a file as UTF-8 text; return empty string for unreadable/binary."""
     try:
+        if os.path.getsize(file_path) > MAX_FILE_SIZE:
+            return ""
         with open(file_path, "rb") as handle:
             data = handle.read()
     except OSError:
@@ -114,19 +133,50 @@ def is_github_url(path):
     return path.startswith("https://github.com/") or path.startswith("github.com/")
 
 
-def clone_github_repo(url):
-    """Clone a public GitHub repo to a temp directory and return the path."""
+def _parse_github_repo(url):
+    """Return (owner, repo, clone_url) for a validated GitHub repository URL."""
     if not url.startswith("https://"):
         url = "https://" + url
 
-    # Remove .git if present
-    url = url.rstrip("/").replace(".git", "")
+    parsed = urlparse(url.rstrip("/"))
+    if parsed.netloc.lower() != "github.com":
+        raise ValueError("Only github.com repository URLs are supported")
+
+    path = parsed.path.strip("/")
+    if path.endswith(".git"):
+        path = path[:-4]
+
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", path):
+        raise ValueError("Invalid GitHub URL format. Expected https://github.com/owner/repo")
+
+    owner, repo = path.split("/", 1)
+    return owner, repo, f"https://github.com/{owner}/{repo}"
+
+
+def _check_github_repo_size(owner, repo):
+    """Reject GitHub repositories larger than the configured size limit."""
+    api_url = f"https://api.github.com/repos/{owner}/{repo}"
+    response = requests.get(api_url, timeout=10)
+    if response.status_code != 200:
+        raise Exception(f"GitHub repository lookup failed: {response.status_code}")
+
+    size_kb = response.json().get("size")
+    if size_kb is None:
+        raise Exception("GitHub repository size unavailable")
+    if size_kb > MAX_GITHUB_REPO_SIZE_KB:
+        raise Exception("Repository is larger than 500MB and cannot be scanned")
+
+
+def clone_github_repo(url):
+    """Clone a public GitHub repo to a temp directory and return the path."""
+    owner, repo, clone_url = _parse_github_repo(url)
+    _check_github_repo_size(owner, repo)
 
     tmp_dir = tempfile.mkdtemp(prefix="vibesec_")
 
     try:
         result = subprocess.run(
-            ["git", "clone", "--depth=1", url, tmp_dir],
+            ["git", "clone", "--depth=1", clone_url, tmp_dir],
             capture_output=True,
             text=True,
             timeout=60,
@@ -135,4 +185,8 @@ def clone_github_repo(url):
             raise Exception(f"Clone failed: {result.stderr}")
         return tmp_dir
     except subprocess.TimeoutExpired:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise Exception("Repository clone timed out after 60 seconds")
+    except Exception:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise

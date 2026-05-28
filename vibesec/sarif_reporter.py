@@ -168,6 +168,13 @@ _SEVERITY_TO_SARIF = {
     "LOW": "note",
 }
 
+_SEVERITY_SCORES = {
+    "CRITICAL": "9.5",
+    "HIGH": "7.5",
+    "MEDIUM": "5.0",
+    "LOW": "2.0",
+}
+
 
 def _severity_to_sarif_level(severity: str) -> str:
     """Map a VibeSec severity string to a SARIF level."""
@@ -267,6 +274,9 @@ def generate_sarif(findings: list, scan_root: str = ".") -> dict:
             "ruleIndex": rule_index_map.get(finding["rule"], 0),
             "level": level,
             "message": {"text": message_text},
+            "properties": {
+                "security-severity": _SEVERITY_SCORES.get(finding["severity"], "5.0"),
+            },
             "locations": [
                 {
                     "physicalLocation": {
@@ -305,6 +315,9 @@ def generate_sarif(findings: list, scan_root: str = ".") -> dict:
                         "rules": rules,
                     }
                 },
+                "originalUriBaseIds": {
+                    "%SRCROOT%": {"uri": "file:///"},
+                },
                 "results": results,
             }
         ],
@@ -326,6 +339,9 @@ def write_sarif(findings: list, output_path: str, scan_root: str = ".") -> None:
     scan_root : str
         Root directory of the scan.
     """
+    if not output_path:
+        output_path = "vibesec-results.sarif"
+
     sarif = generate_sarif(findings, scan_root)
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:

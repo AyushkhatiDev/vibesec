@@ -25,13 +25,30 @@ SKIP_FILES = {
     "README.md", "readme.md", ".gitignore"
 }
 
+PLACEHOLDER_VALUES = {
+    "your-key-here",
+    "your-secret-here",
+    "changeme",
+    "placeholder",
+    "example",
+    "replace-me",
+    "xxx",
+    "yyy",
+}
+
 
 def check_secrets(file_path, content):
     findings = []
 
     # Skip example/template files
     filename = file_path.split("/")[-1].split("\\")[-1]
-    if filename in SKIP_FILES:
+    normalized_path = file_path.replace("\\", "/")
+    if (
+        filename in SKIP_FILES
+        or filename.startswith("test_")
+        or normalized_path.startswith("tests/")
+        or "/tests/" in normalized_path
+    ):
         return findings
 
     # Skip .env files that are in .gitignore — but still flag if exposed
@@ -45,6 +62,9 @@ def check_secrets(file_path, content):
 
         for pattern, description in PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
+                lower_line = line.lower()
+                if any(value in lower_line for value in PLACEHOLDER_VALUES):
+                    continue
                 findings.append({
                     "rule": RULE_NAME,
                     "severity": SEVERITY,

@@ -23,10 +23,10 @@ SAFE_INDICATORS = [
     "WEBHOOK_SECRET",
     "verifySignature",
     "crypto.timingSafeEqual",
-    "hmac",
+    "hmac.new",
+    "hmac.compare_digest",
     "abstractmethod",
     "raise NotImplementedError",
-    "pass",
     "@abstract",
 ]
 
@@ -88,7 +88,8 @@ def check_webhooks(file_path, content):
                     "abstractmethod",
                     "raise NotImplementedError",
                     "@abc.abstractmethod",
-                    "ABC",
+                    "(ABC)",
+                    "(ABC,",
                 ])
 
                 if not is_safe and not is_abstract and not is_stub:

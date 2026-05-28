@@ -17,7 +17,12 @@ PATTERNS = [
 ]
 
 SAFE_INDICATORS = [
-    "process.env",
+    "process.env.ALLOWED_ORIGIN",
+    "process.env.CORS_ORIGIN",
+    "process.env.FRONTEND_URL",
+    "process.env.CLIENT_URL",
+    "os.environ.get",
+    "os.getenv",
     "ALLOWED_ORIGINS",
     "whitelist",
     "allowlist",

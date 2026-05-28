@@ -7,7 +7,7 @@ SEVERITY = "HIGH"
 PATTERNS = [
     (r'["\']?sourceMap["\']?\s*[:=]\s*true', "Source maps enabled in build config"),
     (r'GENERATE_SOURCEMAP\s*=\s*true', "Create React App source maps enabled"),
-    (r'devtool\s*:\s*["\']source-map["\']', "Webpack source-map devtool enabled"),
+    (r'devtool\s*:\s*["\'](?!hidden-|nosources-)source-map["\']', "Webpack source-map devtool enabled"),
     (r'\"source-map\"', "Source map configuration detected"),
 ]
 

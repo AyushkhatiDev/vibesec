@@ -113,6 +113,11 @@ SANITIZERS = {
     "str.isdigit",
     "str.isalnum",
     "validate",
+    "secure_filename",
+    "werkzeug.utils.secure_filename",
+    "uuid.UUID",
+    "UUID",
+    "re.escape",
 }
 
 
@@ -237,6 +242,10 @@ class TaintTracker(ast.NodeVisitor):
         """Mark a variable as tainted."""
         self._tainted[name] = TaintedVar(name, line, desc)
 
+    def _taint_var(self, name: str, taint: TaintedVar):
+        """Mark a variable using existing taint provenance."""
+        self._tainted[name] = TaintedVar(name, taint.source_line, taint.source_desc)
+
     def _is_tainted(self, name: str) -> bool:
         """Check if a variable is tainted in the current scope."""
         return name in self._tainted
@@ -268,6 +277,21 @@ class TaintTracker(ast.NodeVisitor):
         # Variable reference
         if isinstance(node, ast.Name):
             return self._get_taint(node.id)
+
+        # Walrus operator: propagate taint to assigned target.
+        if isinstance(node, ast.NamedExpr):
+            result = self._expr_is_tainted(node.value)
+            if result and isinstance(node.target, ast.Name):
+                self._taint_var(node.target.id, result)
+            return result
+
+        # Starred expression: *tainted
+        if isinstance(node, ast.Starred):
+            return self._expr_is_tainted(node.value)
+
+        # Unary operation: -tainted, not tainted
+        if isinstance(node, ast.UnaryOp):
+            return self._expr_is_tainted(node.operand)
 
         # Attribute access: check if it's a taint source or tainted obj
         if isinstance(node, ast.Attribute):
@@ -410,6 +434,13 @@ class TaintTracker(ast.NodeVisitor):
                 t = self._expr_is_tainted(elt)
                 if t:
                     return t
+
+        # Comprehensions — tainted if the yielded element/value is tainted.
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
+            return self._expr_is_tainted(node.elt)
+
+        if isinstance(node, ast.DictComp):
+            return self._expr_is_tainted(node.value)
 
         # Dict — tainted if any value is tainted
         if isinstance(node, ast.Dict):
