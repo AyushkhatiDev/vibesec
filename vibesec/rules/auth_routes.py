@@ -22,8 +22,15 @@ AUTH_INDICATORS = [
     "authorization",
     "requireAuth",
     "withAuth",
-    "middleware",
-    "session",
+    "authMiddleware",
+    "auth_middleware",
+    "isAuthenticated",
+    "checkAuth",
+    "session['user",
+    "session.get('user",
+    "session.user",
+    "current_user",
+    "g.user",
     "getServerSession",
     "currentUser",
     "verifyJWT",
@@ -42,9 +49,9 @@ def check_auth_routes(file_path, content):
     for line_num, line in enumerate(lines, 1):
         for pattern in SENSITIVE_ROUTE_PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
-                # Check surrounding lines (5 above, 10 below) for auth indicators
-                start = max(0, line_num - 5)
-                end = min(len(lines), line_num + 10)
+                # Check surrounding lines for route-level or router-level auth.
+                start = max(0, line_num - 20)
+                end = min(len(lines), line_num + 20)
                 surrounding = "\n".join(lines[start:end]).lower()
 
                 has_auth = any(

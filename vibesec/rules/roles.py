@@ -14,7 +14,7 @@ PATTERNS = [
      "Admin check using localStorage value — client-side trust"),
     (r'params\.(role|admin|isAdmin|permission)\s*===',
      "Role/permission check using URL params — can be manipulated"),
-    (r'searchParams\.(get|role|admin)',
+    (r'searchParams\.get\s*\(\s*["\'](?:role|admin|isAdmin|permission)["\']',
      "Role read from URL search params — easily manipulated"),
     (r'isAdmin\s*=\s*.*localStorage',
      "isAdmin derived from localStorage — insecure"),

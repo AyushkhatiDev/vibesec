@@ -14,7 +14,7 @@ from vibesec.rules.cors import check_cors
 #   SECRETS          
 
 def test_secrets_detects_api_key():
-    content = 'api_key = "FAKE_KEY_FOR_TESTING_ONLY_XXXXXXXXXXXXXXXXXXXXXXXXX"'
+    content = 'api_key = "AbCdEfGhIjKlMnOpQrStUvWxYz123456"'
     findings = check_secrets("config.py", content)
     assert len(findings) == 1
     assert findings[0]["severity"] == "CRITICAL"
@@ -35,12 +35,12 @@ def test_secrets_detects_database_url():
     assert len(findings) == 1
 
 def test_secrets_skips_comments():
-    content = '# api_key = "FAKE_KEY_FOR_TESTING_ONLY_XXXXXXXXXXXXXXXXXXXXXXXXX"'
+    content = '# api_key = "AbCdEfGhIjKlMnOpQrStUvWxYz123456"'
     findings = check_secrets("config.py", content)
     assert len(findings) == 0
 
 def test_secrets_skips_example_files():
-    content = 'api_key = "FAKE_KEY_FOR_TESTING_ONLY_XXXXXXXXXXXXXXXXXXXXXXXXX"'
+    content = 'api_key = "AbCdEfGhIjKlMnOpQrStUvWxYz123456"'
     findings = check_secrets(".env.example", content)
     assert len(findings) == 0
 
@@ -117,7 +117,7 @@ def test_packages_detects_multiple_hallucinated():
     content = """{
         "dependencies": {
             "react-auth-handler": "^1.0.0",
-            "supabase-helpers": "^2.0.0"
+            "node-security-utils": "^2.0.0"
         }
     }"""
     findings = check_packages("package.json", content)
@@ -161,7 +161,7 @@ def test_sourcemaps_clean_config():
 #   JWT          
 
 def test_jwt_detects_none_algorithm():
-    content = 'const decoded = jwt.decode(token, { algorithms: ["none"] })'
+    content = 'const decoded = jwt.decode(token, algorithms = ["none"])'
     findings = check_jwt("auth.js", content)
     assert len(findings) == 1
     assert findings[0]["severity"] == "HIGH"

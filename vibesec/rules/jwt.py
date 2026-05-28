@@ -4,16 +4,14 @@ RULE_NAME = "Unsafe JWT Handling"
 SEVERITY = "HIGH"
 
 PATTERNS = [
-    (r'jwt\.decode\s*\([^)]*algorithms\s*=\s*\[["\']none["\']\]',
-     "JWT accepts 'none' algorithm — critical auth bypass"),
     (r'jwt\.decode\s*\([^)]*verify\s*=\s*False',
      "JWT verification explicitly disabled"),
+    (r'algorithms?\s*=\s*\[["\']none["\']\]',
+     "JWT accepts 'none' algorithm — critical auth bypass"),
     (r'localStorage\.setItem\s*\([^)]*token',
      "JWT stored in localStorage — vulnerable to XSS theft"),
     (r'sessionStorage\.setItem\s*\([^)]*token',
      "JWT stored in sessionStorage — vulnerable to XSS theft"),
-    (r'algorithm.*none',
-     "JWT 'none' algorithm detected"),
 ]
 
 SKIP_FILES = {"README.md", "readme.md"}

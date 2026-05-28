@@ -21,6 +21,7 @@ PATTERNS = [
 ]
 
 SKIP_FILES = {"README.md", "readme.md"}
+SANITIZERS = ("DOMPurify.sanitize", "sanitizeHtml", "purify.sanitize")
 
 
 def check_xss(file_path, content):
@@ -42,6 +43,12 @@ def check_xss(file_path, content):
 
         for pattern, description in PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
+                if "dangerouslySetInnerHTML" in line:
+                    start = max(0, line_num - 5)
+                    end = min(len(lines), line_num + 5)
+                    surrounding = "\n".join(lines[start:end])
+                    if any(sanitizer in surrounding for sanitizer in SANITIZERS):
+                        continue
                 findings.append({
                     "rule": RULE_NAME,
                     "severity": SEVERITY,

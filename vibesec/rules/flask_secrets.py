@@ -25,14 +25,24 @@ PATTERNS = [
      "Flask app running with debug=True — exposes interactive debugger"),
 ]
 
-SKIP_FILES = {"README.md", "readme.md", ".env.example"}
+SKIP_FILES = {
+    "README.md", "readme.md", ".env.example",
+    "test_", "_test.py", "conftest.py",
+}
 
 
 def check_flask_secrets(file_path, content):
     findings = []
 
     filename = file_path.split("/")[-1].split("\\")[-1]
-    if filename in SKIP_FILES:
+    normalized_path = file_path.replace("\\", "/")
+    if (
+        filename in SKIP_FILES
+        or filename.startswith("test_")
+        or filename.endswith("_test.py")
+        or normalized_path.startswith("tests/")
+        or "/tests/" in normalized_path
+    ):
         return findings
 
     ext = file_path.split(".")[-1].lower()
@@ -47,6 +57,11 @@ def check_flask_secrets(file_path, content):
 
         for pattern, description in PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
+                if "DEBUG" in line:
+                    debug_index = line.upper().find("DEBUG")
+                    before_debug = line[:debug_index]
+                    if '"' in before_debug or "'" in before_debug:
+                        continue
                 findings.append({
                     "rule": RULE_NAME,
                     "severity": SEVERITY,
