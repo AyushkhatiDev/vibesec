@@ -33,9 +33,10 @@ class Reporter:
 
     def print_report(self, findings, path, fix=False):
         if not findings:
+            from vibesec.rules import ALL_RULES
             console.print(Panel(
                 "[bold green]✓ No vulnerabilities found![/bold green]\n"
-                "[dim]VibeSec checked 10 vulnerability patterns.[/dim]",
+                f"[dim]VibeSec checked {len(ALL_RULES)} vulnerability patterns.[/dim]",
                 border_style="green"
             ))
             return
@@ -103,3 +104,9 @@ class Reporter:
 
     def print_json(self, findings):
         console.print(json.dumps(findings, indent=2))
+
+    def print_sarif(self, findings, output_path, scan_root="."):
+        from vibesec.sarif_reporter import write_sarif
+
+        write_sarif(findings, output_path, scan_root=scan_root)
+        console.print(f"  [green]SARIF written to {output_path}[/green]")

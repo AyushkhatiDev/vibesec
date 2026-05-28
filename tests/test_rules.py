@@ -181,6 +181,17 @@ def test_jwt_clean_code():
     findings = check_jwt("auth.js", content)
     assert len(findings) == 0
 
+def test_jwt_detects_verify_false_in_decode():
+    content = 'jwt.decode(token, key, verify=False)'
+    findings = check_jwt("auth.py", content)
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "HIGH"
+
+def test_jwt_ignores_verify_false_in_unrelated_context():
+    content = 'requests.get("https://example.com", verify=False)'
+    findings = check_jwt("auth.py", content)
+    assert len(findings) == 0
+
 
 #   XSS          
 
