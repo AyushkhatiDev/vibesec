@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vibesec
-Version: 0.6.0
+Version: 0.7.0
 Summary: Security scanner for AI-generated code
 Author-email: Ayush Khati <ayushiskhati305@gmail.com>
 License: MIT License
@@ -40,6 +40,7 @@ Requires-Dist: rich>=13.0
 Requires-Dist: requests>=2.28
 Requires-Dist: groq>=0.4.0
 Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: tomli>=2.0; python_version < "3.11"
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0; extra == "dev"
