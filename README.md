@@ -67,14 +67,14 @@ config.py
 VibeSec is designed to be useful on real projects, not just synthetic examples. The terminal report highlights severity distribution, risk score, files scanned, rules checked, the most vulnerable file, and grouped findings with fix guidance.
 
 <p align="center">
-  <img src="docs/assets/vibesec-real-scan-summary.jpeg" alt="VibeSec v0.7.0 terminal scan summary showing severity counts, risk score, files scanned, scan duration, rules checked, and grouped findings" width="860">
+  <img src="docs/assets/billing-software-scan-command-injection.jpeg" alt="VibeSec v0.7.0 terminal scan showing command injection, path traversal, open redirect, and JavaScript path findings in a billing software project" width="860">
 </p>
 
 <details>
-<summary>View detailed grouped findings output</summary>
+<summary>View scan summary output</summary>
 
 <p align="center">
-  <img src="docs/assets/vibesec-real-scan-findings.jpeg" alt="VibeSec terminal report showing detailed path traversal, open redirect, command injection, and JavaScript path findings grouped by file" width="860">
+  <img src="docs/assets/billing-software-scan-summary.jpeg" alt="VibeSec v0.7.0 terminal scan summary showing severity counts, risk score, files scanned, scan duration, rules checked, and grouped findings" width="860">
 </p>
 
 </details>
