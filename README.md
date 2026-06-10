@@ -37,20 +37,7 @@ VibeSec gives developers an immediate, practical answer:
 | Findings are hard to act on | Groups findings by file, assigns severity, gives fix hints, and calculates a risk score |
 | Teams need audit-friendly output | Exports terminal, JSON, SARIF, and self-contained HTML reports |
 
-**Current signal:** `24` security rules, `179` automated tests, `1k+` early PyPI downloads, and SARIF support for GitHub code scanning.
-
-<p align="center">
-  <img src="docs/assets/vibesec-pypi-overview.jpeg" alt="PyPI Stats overview for VibeSec showing version 0.7.0, package metadata, and download activity" width="860">
-</p>
-
-<details>
-<summary>View Python-version download breakdown</summary>
-
-<p align="center">
-  <img src="docs/assets/vibesec-pypi-python-major.jpeg" alt="PyPI Stats chart showing VibeSec download quantity and proportions by Python major version" width="860">
-</p>
-
-</details>
+**Current signal:** `24` security rules, `179` automated tests, `999` PyPI downloads, and SARIF support for GitHub code scanning.
 
 ---
 
