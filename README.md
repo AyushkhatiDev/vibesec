@@ -39,6 +39,19 @@ VibeSec gives developers an immediate, practical answer:
 
 **Current signal:** `24` security rules, `179` automated tests, `1k+` early PyPI downloads, and SARIF support for GitHub code scanning.
 
+<p align="center">
+  <img src="docs/assets/vibesec-pypi-overview.jpeg" alt="PyPI Stats overview for VibeSec showing version 0.7.0, package metadata, and download activity" width="860">
+</p>
+
+<details>
+<summary>View Python-version download breakdown</summary>
+
+<p align="center">
+  <img src="docs/assets/vibesec-pypi-python-major.jpeg" alt="PyPI Stats chart showing VibeSec download quantity and proportions by Python major version" width="860">
+</p>
+
+</details>
+
 ---
 
 ## 30-Second Demo
@@ -61,6 +74,23 @@ config.py
   Found: Database URL with credentials detected in source code
   Fix:   Move to environment variables. Never commit secrets to git.
 ```
+
+### Real Scan Output
+
+VibeSec is designed to be useful on real projects, not just synthetic examples. The terminal report highlights severity distribution, risk score, files scanned, rules checked, the most vulnerable file, and grouped findings with fix guidance.
+
+<p align="center">
+  <img src="docs/assets/vibesec-real-scan-summary.jpeg" alt="VibeSec v0.7.0 terminal scan summary showing severity counts, risk score, files scanned, scan duration, rules checked, and grouped findings" width="860">
+</p>
+
+<details>
+<summary>View detailed grouped findings output</summary>
+
+<p align="center">
+  <img src="docs/assets/vibesec-real-scan-findings.jpeg" alt="VibeSec terminal report showing detailed path traversal, open redirect, command injection, and JavaScript path findings grouped by file" width="860">
+</p>
+
+</details>
 
 ## Current Release
 
