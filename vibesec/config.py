@@ -15,6 +15,12 @@ DEFAULT_CONFIG = {
     "rules": {},
 }
 
+DEFAULT_HOOKS_CONFIG = {
+    "block_on": ["CRITICAL", "HIGH"],
+    "timeout": 30,
+    "enabled": True,
+}
+
 
 def find_config(start_path):
     path = start_path
@@ -51,6 +57,34 @@ def load_config(scan_path):
     config["exclude_rules"] = list(vibesec_config.get("exclude_rules", []))
     config["rules"] = vibesec_config.get("rules", {})
     return config
+
+
+def load_hooks_config(scan_path):
+    """Load the [vibesec.hooks] section from vibesec.toml.
+
+    Returns a dict with keys: block_on, timeout, enabled.
+    Falls back to DEFAULT_HOOKS_CONFIG for missing keys.
+    """
+    hooks_config = dict(DEFAULT_HOOKS_CONFIG)
+    config_path = find_config(scan_path)
+    if not config_path:
+        return hooks_config
+
+    try:
+        with open(config_path, "rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return hooks_config
+
+    vibesec_hooks = data.get("vibesec", {}).get("hooks", {})
+    if "block_on" in vibesec_hooks:
+        raw = vibesec_hooks["block_on"]
+        hooks_config["block_on"] = [s.upper() for s in raw]
+    if "timeout" in vibesec_hooks:
+        hooks_config["timeout"] = int(vibesec_hooks["timeout"])
+    if "enabled" in vibesec_hooks:
+        hooks_config["enabled"] = bool(vibesec_hooks["enabled"])
+    return hooks_config
 
 
 def merge_ignore(config, cli_ignore):

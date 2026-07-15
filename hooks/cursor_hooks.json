@@ -1,0 +1,11 @@
+{
+  "_comment": "VibeSec enforcement hook for Cursor. Copy this to your project's .cursor/hooks.json or merge with existing hooks. Requires vibesec to be installed (pip install vibesec).",
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "python3 -m vibesec.hook_runner"
+      }
+    ]
+  }
+}

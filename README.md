@@ -100,6 +100,112 @@ Highlights from the current release:
 - Batched and cached npm registry checks
 - Python taint analysis for SQL, command injection, path traversal, and SSRF sinks
 - Basic JavaScript taint tracking fallback for request-data flows
+- **Enforcement hooks for Claude Code and Cursor** — block insecure code at write time
+
+---
+
+## Enforcement Hooks
+
+VibeSec has two complementary integration modes for AI coding agents:
+
+| Mode | How it works | When it fires |
+|---|---|---|
+| **Advisory (MCP)** | Agent calls `check_code()` during its reasoning | Only when the agent chooses to call it |
+| **Enforcement (Hooks)** | Runs automatically after every file write/edit | Always — cannot be skipped |
+
+The MCP server is opt-in and cross-client. Enforcement hooks are always-on — they fire after every write and surface security issues that the agent must address.
+
+### Quick Setup
+
+```bash
+# Auto-detect Claude Code / Cursor and install hooks
+vibesec hooks install
+
+# Or specify the client explicitly
+vibesec hooks install --client claude-code
+vibesec hooks install --client cursor
+vibesec hooks install --client all
+```
+
+### Claude Code
+
+VibeSec installs two hooks in `.claude/settings.json`:
+
+1. **`PostToolUse`** — fires after each `Write`/`Edit`/`MultiEdit` call. The file is already on disk, so VibeSec scans it and sends findings to Claude via stderr. Claude sees the error and self-corrects on the next turn.
+2. **`PostToolBatch`** — fires after all parallel tool calls resolve. If VibeSec found blocking issues in any file during the batch, exit code 2 **stops the agentic loop** before Claude's next model call, forcing it to address the issues.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m vibesec.hook_runner",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m vibesec.hook_runner --batch",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+When VibeSec finds CRITICAL or HIGH issues, the `PostToolUse` hook sends the findings to Claude via stderr — Claude reads them and knows what to fix. The `PostToolBatch` hook then stops the loop so Claude addresses the issues before moving on to other work.
+
+### Cursor
+
+VibeSec installs an `afterFileEdit` hook in `.cursor/hooks.json`:
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "python3 -m vibesec.hook_runner"
+      }
+    ]
+  }
+}
+```
+
+### Hook Configuration
+
+Control enforcement behavior in `vibesec.toml`:
+
+```toml
+[vibesec.hooks]
+block_on = ["CRITICAL", "HIGH"]   # severities that trigger blocking (exit code 2)
+timeout = 30                       # max seconds per hook run
+enabled = true                     # kill switch to disable hooks
+```
+
+### Hook Management
+
+```bash
+# Check which hooks are installed
+vibesec hooks status
+
+# Remove all VibeSec hooks
+vibesec hooks uninstall
+
+# Remove hooks for a specific client
+vibesec hooks uninstall --client claude-code
+```
 
 ---
 
@@ -364,7 +470,64 @@ jobs:
 
 ---
 
+## MCP Server (AI Agent Integration)
+
+VibeSec ships an MCP server that AI coding agents (Claude Code, Cursor, Windsurf) can call mid-task. Install as an optional extra:
+
+```bash
+pip install "vibesec[mcp]"
+```
+
+Agent-side config (e.g. `.claude/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "vibesec": {
+      "command": "python3",
+      "args": ["-m", "vibesec.mcp_server"]
+    }
+  }
+}
+```
+
+### MCP Tools
+
+| Tool | What it does |
+|---|---|
+| `check_code(code, filename)` | Scan a code snippet — returns issues with severity, line, fix hint |
+| `check_file(file_path)` | Scan a file on disk |
+| `check_diff(diff, filename)` | Scan only added lines from a unified diff |
+| `suggest_fix(code, issue, filename)` | **Generate an applicable unified diff** for a specific issue |
+| `list_rules()` | List all 24 security rules |
+
+### suggest_fix — LLM-Powered Code Fixes
+
+`suggest_fix()` goes beyond static advice. It generates a real unified diff using rule-specific knowledge about *how* AI coding tools introduce each vulnerability and *exactly* how to fix it:
+
+```
+Agent workflow:
+  1. result = check_code(code, "app.py")     → finds SQL injection on line 5
+  2. fix = suggest_fix(code, result.issues[0]) → returns a unified diff
+  3. Agent applies the diff
+  4. check_code(fixed_code, "app.py")          → clean=true ✓
+```
+
+Each of VibeSec's 24 rules has a specialized fix template encoding:
+- How AI tools typically introduce this specific bug
+- The canonical fix pattern (not generic advice)
+- Known pitfalls in the fix itself (e.g., "don't use `.format()` to fix SQL injection — it's equally injectable")
+
+Requires `GROQ_API_KEY` for LLM-generated diffs. Without it, returns static `fix_hint` text as a fallback.
+
+```bash
+export GROQ_API_KEY="..."
+```
+
+---
+
 ## Engineering Notes
+
 
 VibeSec is intentionally lightweight:
 

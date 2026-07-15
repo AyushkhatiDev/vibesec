@@ -1,0 +1,17 @@
+{
+  "_comment": "VibeSec enforcement hook for Claude Code. Copy this into your project's .claude/settings.json, or merge it with your existing settings. Update the command path to point to your VibeSec installation.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m vibesec.hook_runner",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

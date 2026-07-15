@@ -16,7 +16,11 @@ PATTERNS = [
     (r'stripe[_\s]secret\s*=\s*["\'][^"\']+["\']', "Stripe secret key"),
     (r'sk_live_[a-zA-Z0-9]{24,}', "Stripe live secret key"),
     (r'AUTH_SECRET\s*=\s*["\'][^"\']{8,}["\']', "Auth secret hardcoded"),
-    (r'DATABASE_URL\s*=\s*["\']postgresql://[^"\']+["\']', "Database URL with credentials"),
+    (r'DATABASE_URL\s*=\s*["\']postgresql?://[^"\']+["\']', "Database URL with credentials"),
+    (r'DATABASE_URL\s*=\s*["\']mysql://[^"\']+["\']', "MySQL URL with credentials"),
+    (r'DATABASE_URL\s*=\s*["\']mongodb(\+srv)?://[^"\']+["\']', "MongoDB URL with credentials"),
+    (r'DATABASE_URL\s*=\s*["\']redis://[^"\']+["\']', "Redis URL with credentials"),
+    (r'["\'][a-zA-Z]+://[^:/"\']+:[^@/"\'@]{4,}@[^"\']+["\']', "Connection string with embedded credentials"),
 ]
 
 # Files to skip — these are expected to have these patterns

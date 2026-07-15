@@ -33,9 +33,16 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
+mcp = [
+    "mcp[cli]>=1.0",
+]
 
 [project.scripts]
 vibesec = "vibesec.cli:main"
+vibesec-mcp = "vibesec.mcp_server:main"
+
+[tool.setuptools.packages.find]
+include = ["vibesec*"]
 
 [project.urls]
 "Homepage" = "https://github.com/AyushkhatiDev/vibesec"
