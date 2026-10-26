@@ -35,7 +35,7 @@ PATTERNS = [
 ]
 
 # These files should have real values — only flag if likely committed
-ONLY_SCAN = {".env", ".env.local", ".env.production", ".env.prod"}
+ONLY_SCAN = {".env", ".env.local", ".env.production", ".env.prod", ".env.staging", ".env.development"}
 
 
 def check_env_secrets(file_path, content):

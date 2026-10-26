@@ -44,8 +44,9 @@ def check_webhooks(file_path, content):
     if ext not in {"py", "js", "ts", "jsx", "tsx"}:
         return findings
 
-    # Only scan files that mention webhooks
-    if "webhook" not in content.lower() and "stripe" not in content.lower():
+    # Only scan files that mention webhooks or relevant providers
+    lower_content = content.lower()
+    if not any(k in lower_content for k in ("webhook", "stripe", "github", "x-hub-signature", "x-github-event")):
         return findings
 
     lines = content.splitlines()

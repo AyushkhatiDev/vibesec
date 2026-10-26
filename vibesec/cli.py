@@ -28,7 +28,8 @@ def cli():
 @click.option("--sarif-output", default="vibesec-results.sarif", help="SARIF output file path")
 @click.option("--html-output", default="report.html", help="HTML output file path")
 @click.option("--ignore", default="", help="Comma-separated rules to ignore e.g. rls,cors")
-def scan(path, fix, output, severity, sarif_output, html_output, ignore):
+@click.option("--fail-on", type=click.Choice(["critical", "high", "medium", "low"]), default=None, help="Exit with non-zero code if findings meet or exceed this severity")
+def scan(path, fix, output, severity, sarif_output, html_output, ignore, fail_on):
     """Scan a directory, file, or GitHub repository URL."""
     from vibesec.reporter import Reporter
     from vibesec.scanner import Scanner
@@ -106,6 +107,17 @@ def scan(path, fix, output, severity, sarif_output, html_output, ignore):
                 files_scanned=scanner.files_scanned,
                 duration=scanner.duration,
             )
+
+        fail_threshold = fail_on or config.get("fail_on")
+        if fail_threshold:
+            limit = SEVERITY_ORDER.get(str(fail_threshold).lower())
+            if limit is not None:
+                has_failures = any(
+                    SEVERITY_ORDER.get(f["severity"].lower(), 99) <= limit
+                    for f in findings
+                )
+                if has_failures:
+                    raise click.exceptions.Exit(1)
     finally:
         # Clean up temp directory
         if tmp_dir:
@@ -265,10 +277,48 @@ def _install_cursor(project_dir):
     return True
 
 
+def _install_git(project_dir):
+    """Install VibeSec pre-commit hook in a git repository."""
+    git_dir = os.path.join(project_dir, ".git")
+    if not os.path.isdir(git_dir):
+        console.print("  [yellow]No .git directory found.[/yellow]")
+        return False
+
+    hooks_dir = os.path.join(git_dir, "hooks")
+    os.makedirs(hooks_dir, exist_ok=True)
+    pre_commit_path = os.path.join(hooks_dir, "pre-commit")
+
+    vibesec_cmd = "python3 -m vibesec.hook_runner --staged\n"
+
+    if os.path.exists(pre_commit_path):
+        try:
+            with open(pre_commit_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            if "vibesec" in content:
+                console.print("  [yellow]Git pre-commit hook already installed[/yellow]")
+                return False
+        except OSError:
+            content = "#!/usr/bin/env bash\n"
+    else:
+        content = "#!/usr/bin/env bash\n"
+
+    if not content.endswith("\n"):
+        content += "\n"
+    content += vibesec_cmd
+
+    with open(pre_commit_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    os.chmod(pre_commit_path, 0o755)
+
+    console.print("  [green]✓[/green] Git pre-commit hook installed")
+    console.print(f"    Hook: [cyan]{pre_commit_path}[/cyan]")
+    return True
+
+
 @hooks.command()
 @click.option(
     "--client",
-    type=click.Choice(["claude-code", "cursor", "all"]),
+    type=click.Choice(["claude-code", "cursor", "git", "all"]),
     default=None,
     help="Target client. Auto-detects if not specified.",
 )
@@ -286,6 +336,8 @@ def install(client, project_dir):
     targets = []
     if client == "all":
         targets = ["claude-code", "cursor"]
+        if os.path.isdir(os.path.join(project_dir, ".git")):
+            targets.append("git")
     elif client:
         targets = [client]
     else:
@@ -309,6 +361,9 @@ def install(client, project_dir):
                 installed += 1
         elif target == "cursor":
             if _install_cursor(project_dir):
+                installed += 1
+        elif target == "git":
+            if _install_git(project_dir):
                 installed += 1
 
     if installed:
@@ -386,6 +441,21 @@ def status(project_dir):
     else:
         console.print("  [dim]✗[/dim] Cursor — not configured")
 
+    # Git
+    git_hook = os.path.join(project_dir, ".git", "hooks", "pre-commit")
+    if os.path.exists(git_hook):
+        try:
+            with open(git_hook, "r", encoding="utf-8") as f:
+                hook_code = f.read()
+            if "vibesec" in hook_code:
+                console.print("  [green]✓[/green] Git — pre-commit hook active")
+            else:
+                console.print("  [dim]✗[/dim] Git — pre-commit hook exists but no VibeSec check")
+        except Exception:
+            console.print("  [dim]✗[/dim] Git — pre-commit unreadable")
+    else:
+        console.print("  [dim]✗[/dim] Git — not configured")
+
     # Config
     from vibesec.config import load_hooks_config
     hooks_cfg = load_hooks_config(project_dir)
@@ -399,7 +469,7 @@ def status(project_dir):
 @hooks.command()
 @click.option(
     "--client",
-    type=click.Choice(["claude-code", "cursor", "all"]),
+    type=click.Choice(["claude-code", "cursor", "git", "all"]),
     default="all",
     help="Target client to remove hooks from.",
 )
@@ -413,7 +483,7 @@ def uninstall(client, project_dir):
     project_dir = os.path.abspath(project_dir)
     console.print(f"\n  [bold]VibeSec Hook Uninstaller[/bold]\n")
 
-    targets = ["claude-code", "cursor"] if client == "all" else [client]
+    targets = ["claude-code", "cursor", "git"] if client == "all" else [client]
     removed = 0
 
     for target in targets:
@@ -511,6 +581,26 @@ def uninstall(client, project_dir):
                         console.print("  [dim]✗[/dim] Cursor — no VibeSec hook found")
                 except Exception as e:
                     console.print(f"  [red]Error reading Cursor hooks: {e}[/red]")
+
+        elif target == "git":
+            git_hook = os.path.join(project_dir, ".git", "hooks", "pre-commit")
+            if os.path.exists(git_hook):
+                try:
+                    with open(git_hook, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    filtered = [l for l in lines if "vibesec" not in l]
+                    if len(filtered) < len(lines):
+                        if not any(l.strip() and not l.strip().startswith("#") for l in filtered):
+                            os.remove(git_hook)
+                        else:
+                            with open(git_hook, "w", encoding="utf-8") as f:
+                                f.writelines(filtered)
+                        console.print("  [green]✓[/green] Removed Git pre-commit hook")
+                        removed += 1
+                    else:
+                        console.print("  [dim]✗[/dim] Git — no VibeSec hook found")
+                except Exception as e:
+                    console.print(f"  [red]Error reading Git hook: {e}[/red]")
 
     if removed:
         console.print(f"\n  [green]{removed} hook(s) removed.[/green]\n")

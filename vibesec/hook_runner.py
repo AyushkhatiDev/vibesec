@@ -151,20 +151,23 @@ def _format_stderr_report(
     return "\n".join(lines)
 
 
-def _signal_file_path() -> str:
+def _signal_file_path(project_dir: Optional[str] = None) -> str:
     """Return the path to the batch signal file.
 
     PostToolUse hooks write to this file when they find blocking issues.
     PostToolBatch hooks read it and clear it.
     """
+    import hashlib
     import tempfile
 
-    return os.path.join(tempfile.gettempdir(), "vibesec_batch_signal.json")
+    target_dir = os.path.abspath(project_dir or os.getcwd())
+    dir_hash = hashlib.sha256(target_dir.encode("utf-8")).hexdigest()[:12]
+    return os.path.join(tempfile.gettempdir(), f"vibesec_batch_signal_{dir_hash}.json")
 
 
 def _write_signal(findings: List[Dict[str, Any]], file_path: str) -> None:
     """Append blocking findings to the batch signal file."""
-    signal_path = _signal_file_path()
+    signal_path = _signal_file_path(os.path.dirname(os.path.abspath(file_path)))
     existing = []
     if os.path.exists(signal_path):
         try:
@@ -179,9 +182,9 @@ def _write_signal(findings: List[Dict[str, Any]], file_path: str) -> None:
         json.dump(existing, f)
 
 
-def _read_and_clear_signal() -> List[Dict[str, Any]]:
+def _read_and_clear_signal(project_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """Read and delete the batch signal file. Returns the accumulated issues."""
-    signal_path = _signal_file_path()
+    signal_path = _signal_file_path(project_dir)
     if not os.path.exists(signal_path):
         return []
 
@@ -294,6 +297,36 @@ def run_batch() -> int:
     return 2
 
 
+def run_staged(project_dir: Optional[str] = None) -> int:
+    """Scan staged git files before commit.
+
+    Returns:
+        0  — clean or advisory-only findings
+        2  — blocking findings found; abort commit
+    """
+    import subprocess
+    cmd = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=project_dir or ".")
+        if proc.returncode != 0:
+            return 0
+        files = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    except Exception:
+        return 0
+
+    if not files:
+        return 0
+
+    exit_code = 0
+    hooks_config = load_hooks_config(project_dir or ".")
+    for f in files:
+        abs_path = os.path.abspath(os.path.join(project_dir or ".", f))
+        code = run_hook(abs_path, hooks_config=hooks_config)
+        if code != 0:
+            exit_code = code
+    return exit_code
+
+
 def main():
     """CLI entrypoint for hook_runner."""
     parser = argparse.ArgumentParser(
@@ -310,10 +343,18 @@ def main():
         help="Run in PostToolBatch mode: check if any PostToolUse hooks "
         "found blocking issues and stop the loop if so.",
     )
+    parser.add_argument(
+        "--staged",
+        action="store_true",
+        help="Run in git pre-commit mode: scan all staged files and block if issues found.",
+    )
     args = parser.parse_args()
 
     if args.batch:
         sys.exit(run_batch())
+
+    if args.staged:
+        sys.exit(run_staged())
 
     file_path, inline_content = _resolve_input(args.file)
     if not file_path:

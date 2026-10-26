@@ -8,7 +8,6 @@ PATTERNS = [
     (r'["\']?sourceMap["\']?\s*[:=]\s*true', "Source maps enabled in build config"),
     (r'GENERATE_SOURCEMAP\s*=\s*true', "Create React App source maps enabled"),
     (r'devtool\s*:\s*["\'](?!hidden-|nosources-)source-map["\']', "Webpack source-map devtool enabled"),
-    (r'\"source-map\"', "Source map configuration detected"),
 ]
 
 
@@ -17,6 +16,10 @@ def check_sourcemaps(file_path, content):
 
     filename = file_path.split("/")[-1].split("\\")[-1]
     ext = file_path.split(".")[-1].lower()
+
+    # Skip package.json — source-map may be a legitimate dependency library
+    if filename == "package.json":
+        return findings
 
     # Check .map files committed to repo
     if filename.endswith(".map"):
@@ -38,6 +41,7 @@ def check_sourcemaps(file_path, content):
         "webpack.config.js", "webpack.config.ts",
         "next.config.js", "next.config.ts",
         "vite.config.js", "vite.config.ts",
+        "tsconfig.json", "jsconfig.json",
         ".env", ".env.production", ".env.prod"
     }
 

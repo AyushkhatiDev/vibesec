@@ -97,3 +97,20 @@ def test_github_url_validation_accepts_owner_repo():
 def test_github_url_validation_rejects_extra_path():
     with pytest.raises(ValueError):
         _parse_github_repo("https://github.com/owner/repo/issues")
+
+
+def test_walk_files_finds_env_files(temp_workspace):
+    env_file = os.path.join(temp_workspace, ".env")
+    env_local = os.path.join(temp_workspace, ".env.local")
+    env_prod = os.path.join(temp_workspace, ".env.production")
+    with open(env_file, "w") as f:
+        f.write("DB_HOST=localhost\n")
+    with open(env_local, "w") as f:
+        f.write("DB_HOST=localhost\n")
+    with open(env_prod, "w") as f:
+        f.write("DB_HOST=prod.internal\n")
+
+    files = list(walk_files(temp_workspace))
+    assert env_file in files
+    assert env_local in files
+    assert env_prod in files

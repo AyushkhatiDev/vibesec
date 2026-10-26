@@ -47,6 +47,13 @@ SUPPORTED_FILENAMES = {
     "docker-compose.yaml",
     "compose.yml",
     "compose.yaml",
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.prod",
+    ".env.staging",
+    ".env.development",
+    ".env.test",
 }
 
 TEXT_MAGIC_PREFIXES = (
@@ -68,7 +75,8 @@ def _effective_max_file_size(max_file_size=None):
 
 
 def _is_supported_file(file_name):
-    if file_name in SUPPORTED_FILENAMES or file_name.lower() in SUPPORTED_FILENAMES:
+    lower_name = file_name.lower()
+    if lower_name in SUPPORTED_FILENAMES or lower_name.startswith(".env.") or lower_name == ".env":
         return True
     ext = os.path.splitext(file_name)[1].lower()
     return ext in SUPPORTED_EXTENSIONS

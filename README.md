@@ -197,6 +197,9 @@ enabled = true                     # kill switch to disable hooks
 ### Hook Management
 
 ```bash
+# Install Git pre-commit hook (scans staged files automatically)
+vibesec hooks install --client git
+
 # Check which hooks are installed
 vibesec hooks status
 
@@ -234,6 +237,12 @@ Scan a local project:
 
 ```bash
 vibesec scan ./my-project
+```
+
+Scan and block CI/CD pipeline if critical or high issues are found:
+
+```bash
+vibesec scan ./my-project --fail-on high
 ```
 
 Scan a public GitHub repository:

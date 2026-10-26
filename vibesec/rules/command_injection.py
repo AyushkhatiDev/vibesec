@@ -56,7 +56,33 @@ def _check_python(file_path, content):
         return _check_python_regex(file_path, content)
     visitor = CommandInjectionVisitor(file_path, content.splitlines())
     visitor.visit(tree)
-    return visitor.findings
+
+    # Enrich with taint tracking when available
+    try:
+        from vibesec.taint_tracker import analyze_taint
+        taint_findings = analyze_taint(file_path, content)
+        for tf in taint_findings:
+            if getattr(tf, "vulnerability", "") == "command":
+                visitor.findings.append(finding(
+                    RULE_NAME,
+                    "CRITICAL",
+                    file_path,
+                    tf.sink_line,
+                    f"{tf.sink_desc}. Tainted by {tf.source_desc} (line {tf.source_line}).",
+                    PY_FIX,
+                    tf.sink_code,
+                ))
+    except Exception:
+        pass
+
+    seen_keys = set()
+    deduped = []
+    for f in visitor.findings:
+        key = (f["line"], f["message"])
+        if key not in seen_keys:
+            seen_keys.add(key)
+            deduped.append(f)
+    return deduped
 
 
 def _check_python_regex(file_path, content):
