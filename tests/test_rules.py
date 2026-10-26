@@ -49,6 +49,35 @@ def test_secrets_clean_code():
     findings = check_secrets("config.py", content)
     assert len(findings) == 0
 
+def test_secrets_detects_openai_proj_key():
+    content = 'OPENAI_KEY = "sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx"'
+    findings = check_secrets("config.py", content)
+    assert len(findings) == 1
+    assert "OpenAI API key" in findings[0]["message"]
+
+def test_secrets_detects_anthropic_key():
+    content = 'ANTHROPIC_KEY = "sk-ant-api03-abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890123456"'
+    findings = check_secrets("config.py", content)
+    assert len(findings) == 1
+    assert "Anthropic API key" in findings[0]["message"]
+
+def test_secrets_detects_github_pat():
+    content = 'GITHUB_TOKEN = "github_pat_11AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZ00112233445566778899aabbcc"'
+    findings = check_secrets("config.py", content)
+    assert len(findings) == 1
+    assert "GitHub token" in findings[0]["message"]
+
+def test_secrets_detects_aws_key():
+    content = 'AWS_ACCESS_KEY = "AKIA1234567890ABCDEF"'
+    findings = check_secrets("config.py", content)
+    assert len(findings) == 1
+    assert "AWS Access Key ID" in findings[0]["message"]
+
+def test_secrets_detects_json_object_notation():
+    content = '{"apiKey": "AbCdEfGhIjKlMnOpQrStUvWxYz123456"}'
+    findings = check_secrets("config.json", content)
+    assert len(findings) == 1
+
 
 #   RLS          
 
@@ -155,6 +184,11 @@ def test_sourcemaps_detects_react_env():
 def test_sourcemaps_clean_config():
     content = "sourceMap: false"
     findings = check_sourcemaps("webpack.config.js", content)
+    assert len(findings) == 0
+
+def test_sourcemaps_ignores_package_json_dependency():
+    content = '{"dependencies": {"source-map": "^0.7.4"}}'
+    findings = check_sourcemaps("package.json", content)
     assert len(findings) == 0
 
 

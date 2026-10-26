@@ -235,3 +235,32 @@ class TestHooksUninstall:
         # The "echo other" hook should survive
         assert len(updated["hooks"]["PostToolUse"]) == 1
         assert "other" in updated["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
+
+    def test_git_hook_lifecycle(self, runner, project_dir):
+        # Create .git directory
+        (project_dir / ".git").mkdir()
+
+        # Install git hook
+        res = runner.invoke(
+            cli,
+            ["hooks", "install", "--client", "git", "--project-dir", str(project_dir)],
+        )
+        assert res.exit_code == 0
+        assert "Git pre-commit hook installed" in res.output
+
+        hook_file = project_dir / ".git" / "hooks" / "pre-commit"
+        assert hook_file.exists()
+        assert "vibesec" in hook_file.read_text()
+
+        # Status check
+        status_res = runner.invoke(cli, ["hooks", "status", "--project-dir", str(project_dir)])
+        assert "Git — pre-commit hook active" in status_res.output
+
+        # Uninstall git hook
+        uninst_res = runner.invoke(
+            cli,
+            ["hooks", "uninstall", "--client", "git", "--project-dir", str(project_dir)],
+        )
+        assert uninst_res.exit_code == 0
+        assert "Removed Git pre-commit hook" in uninst_res.output
+        assert not hook_file.exists()

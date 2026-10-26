@@ -30,7 +30,13 @@ import os
 import tempfile
 from typing import Any, Dict, List, Optional
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except (ImportError, ModuleNotFoundError):
+    try:
+        from mcp.server.mcpserver import MCPServer as FastMCP
+    except (ImportError, ModuleNotFoundError):
+        from mcp.server.fastmcp import FastMCP
 
 from vibesec.rules import ALL_RULES
 from vibesec.utils import read_file

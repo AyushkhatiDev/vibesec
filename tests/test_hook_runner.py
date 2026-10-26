@@ -287,3 +287,22 @@ class TestRunBatch:
             assert len(data) == 1
             assert data[0]["file"] == str(f)
             assert len(data[0]["findings"]) > 0
+
+
+class TestRunStaged:
+    def test_run_staged_empty_staged_returns_0(self):
+        from vibesec.hook_runner import run_staged
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+            assert run_staged() == 0
+
+    def test_run_staged_blocks_on_vulnerable_staged_file(self, tmp_path):
+        from vibesec.hook_runner import run_staged
+        vuln_file = tmp_path / "secret.py"
+        vuln_file.write_text('api_key = "AbCdEfGhIjKlMnOpQrStUvWxYz123456"')
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "secret.py\n"
+            assert run_staged(project_dir=str(tmp_path)) == 2

@@ -30,27 +30,10 @@ set -euo pipefail
 # Read stdin (Claude Code provides JSON with tool context)
 INPUT=$(cat)
 
-# Try to extract file path from tool_input using Python (no jq dependency)
-FILE_PATH=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    ti = data.get('tool_input', {})
-    path = ti.get('file_path') or ti.get('file') or ti.get('target_file') or ''
-    print(path)
-except Exception:
-    print('')
-" 2>/dev/null || echo "")
-
-# If we couldn't extract a file path, allow the tool call to proceed
-if [ -z "$FILE_PATH" ]; then
+# If input is empty, allow to proceed
+if [ -z "$INPUT" ]; then
     exit 0
 fi
 
-# If the file doesn't exist on disk, nothing to scan
-if [ ! -f "$FILE_PATH" ]; then
-    exit 0
-fi
-
-# Run VibeSec hook runner — it handles severity filtering and exit codes
-exec python3 -m vibesec.hook_runner --file "$FILE_PATH"
+# Run VibeSec hook runner — passes JSON on stdin to preserve inline content
+echo "$INPUT" | exec python3 -m vibesec.hook_runner
