@@ -160,10 +160,10 @@ def check_code(
                 }
             ]
         }
-    """
     # Rules key off file_path for extension / naming checks, so we
     # create a synthetic but realistic path from the filename hint.
-    synthetic_path = os.path.join("/src", filename)
+    safe_name = os.path.basename(filename) or "untitled.py"
+    synthetic_path = os.path.join("/src", safe_name)
     findings = _run_rules(synthetic_path, code)
     return _format_response(findings)
 
@@ -238,7 +238,8 @@ def check_diff(
         }
 
     code = "\n".join(added_lines)
-    synthetic_path = os.path.join("/src", filename)
+    safe_name = os.path.basename(filename) or "untitled.py"
+    synthetic_path = os.path.join("/src", safe_name)
     findings = _run_rules(synthetic_path, code)
     return _format_response(findings)
 

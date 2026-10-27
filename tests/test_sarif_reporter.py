@@ -298,5 +298,5 @@ def test_rule_ids_are_unique():
     assert len(ids) == len(set(ids)), "Duplicate rule IDs found"
 
 
-def test_rule_registry_has_13_rules():
-    assert len(RULES) == 13
+def test_rule_registry_has_all_rules():
+    assert len(RULES) == 24
