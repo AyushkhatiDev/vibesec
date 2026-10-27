@@ -18,16 +18,44 @@ RULE_NAME = "Path Traversal"
 SEVERITY = "HIGH"
 FIX = "Canonicalize and constrain paths to an allowed base directory. Use secure_filename and reject traversal segments."
 
-SAFE_INDICATORS = ("secure_filename", "werkzeug.utils.secure_filename", "safe_join", "Path.resolve")
-TAINT_HINTS = ("request.", "req.", "input(", "user", "filename", "path", "file", "params", "query", "body")
+SAFE_INDICATORS = (
+    "secure_filename",
+    "werkzeug.utils.secure_filename",
+    "safe_join",
+    "Path.resolve",
+    "os.path.basename",
+    "os.path.abspath",
+    "basename",
+)
+TAINT_HINTS = (
+    "request.",
+    "req.",
+    "request[",
+    "req[",
+    "input(",
+    "user_input",
+    "user_path",
+    "user_file",
+    "user_filename",
+    "filename",
+    "params",
+    "query",
+    "payload",
+    "raw_path",
+    "user_param",
+)
 
 
 def _looks_tainted(node):
     if node is None or literal_or_safe_config(node):
         return False
+    if isinstance(node, ast.Call):
+        func_name = call_name(node.func)
+        if func_name in {"os.path.basename", "basename", "secure_filename", "werkzeug.utils.secure_filename", "os.path.abspath"}:
+            return False
     text = ast.unparse(node) if hasattr(ast, "unparse") else variable_like(node) or ""
     lower = text.lower()
-    return any(hint in lower for hint in TAINT_HINTS) or variable_like(node) is not None
+    return any(hint in lower for hint in TAINT_HINTS)
 
 
 class PathTraversalVisitor(ast.NodeVisitor):
@@ -71,7 +99,33 @@ def _check_python(file_path, content):
         return []
     visitor = PathTraversalVisitor(file_path, content.splitlines())
     visitor.visit(tree)
-    return visitor.findings
+
+    # Enrich with taint tracking when available
+    try:
+        from vibesec.taint_tracker import analyze_taint
+        taint_findings = analyze_taint(file_path, content)
+        for tf in taint_findings:
+            if getattr(tf, "vulnerability", "") == "path":
+                visitor.findings.append(finding(
+                    RULE_NAME,
+                    SEVERITY,
+                    file_path,
+                    tf.sink_line,
+                    f"{tf.sink_desc}. Tainted by {tf.source_desc} (line {tf.source_line}).",
+                    FIX,
+                    tf.sink_code,
+                ))
+    except Exception:
+        pass
+
+    seen_keys = set()
+    deduped = []
+    for f in visitor.findings:
+        key = (f["line"], f["message"])
+        if key not in seen_keys:
+            seen_keys.add(key)
+            deduped.append(f)
+    return deduped
 
 
 def _check_js(file_path, content):

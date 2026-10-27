@@ -157,6 +157,116 @@ RULES = {
         "defaultLevel": "warning",
         "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
     },
+    "Path Traversal": {
+        "id": "VS014",
+        "shortDescription": "User-controlled input flows into a filesystem path.",
+        "fullDescription": (
+            "Accessing filesystem paths using user-controlled input allows path "
+            "traversal attacks. Validate, normalize, and restrict paths to an allowed base directory."
+        ),
+        "defaultLevel": "error",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-high",
+    },
+    "Command Injection": {
+        "id": "VS015",
+        "shortDescription": "User-controlled input reaches a system shell execution sink.",
+        "fullDescription": (
+            "Executing system commands with dynamic or user-controlled input can lead to "
+            "remote code execution. Pass arguments as a list with shell=False or use safe APIs."
+        ),
+        "defaultLevel": "error",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-critical",
+    },
+    "Server-Side Request Forgery": {
+        "id": "VS016",
+        "shortDescription": "Unvalidated URL fetched by the server (SSRF).",
+        "fullDescription": (
+            "Sending server-side HTTP requests to user-controlled URLs can expose internal "
+            "services and cloud metadata. Allowlist destination hosts and reject private IP ranges."
+        ),
+        "defaultLevel": "error",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-high",
+    },
+    "Insecure Deserialization": {
+        "id": "VS017",
+        "shortDescription": "Untrusted data passed to unsafe deserialization functions.",
+        "fullDescription": (
+            "Deserializing untrusted data with pickle, yaml.load without SafeLoader, or eval() "
+            "allows arbitrary code execution. Use safe formats like JSON or safe loaders."
+        ),
+        "defaultLevel": "error",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-high",
+    },
+    "Server-Side Template Injection": {
+        "id": "VS018",
+        "shortDescription": "User-controlled input rendered directly into a template.",
+        "fullDescription": (
+            "Rendering unescaped user input inside template engines allows "
+            "Server-Side Template Injection and remote code execution."
+        ),
+        "defaultLevel": "error",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-high",
+    },
+    "Weak Cryptography": {
+        "id": "VS019",
+        "shortDescription": "Use of broken cryptographic primitives or insecure random generators.",
+        "fullDescription": (
+            "Broken algorithms like MD5/SHA1, weak ciphers, or standard pseudo-random number "
+            "generators used for security tokens compromise cryptographic guarantees."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
+    "Open Redirect": {
+        "id": "VS020",
+        "shortDescription": "Unvalidated redirect using user-controlled target.",
+        "fullDescription": (
+            "Redirecting users to untrusted URLs enables phishing and credential theft. "
+            "Validate redirect targets against an allowlist of relative paths or known domains."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
+    "Node.js Security Misconfiguration": {
+        "id": "VS021",
+        "shortDescription": "Insecure Node.js runtime or middleware configuration.",
+        "fullDescription": (
+            "Missing security headers, disabled certificate validation, or prototype "
+            "pollution risks weaken Node.js runtime security."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
+    "Next.js Security Issue": {
+        "id": "VS022",
+        "shortDescription": "Security misconfiguration or secret leak in Next.js application.",
+        "fullDescription": (
+            "Exposing server secrets via NEXT_PUBLIC_ prefixes, missing Server Actions "
+            "authorization, or unsafe dangerouslySetInnerHTML in React/Next.js."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
+    "Docker Security Issue": {
+        "id": "VS023",
+        "shortDescription": "Insecure Dockerfile configuration.",
+        "fullDescription": (
+            "Running containers as root, using outdated base images, or leaking build "
+            "secrets in Dockerfile compromises container isolation."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
+    "GitHub Actions Security Issue": {
+        "id": "VS024",
+        "shortDescription": "Security vulnerability or misconfiguration in GitHub Actions workflow.",
+        "fullDescription": (
+            "Unpinned third-party actions, untrusted PR checkout triggers (pull_request_target), "
+            "or unescaped script injections allow workflow and repository compromise."
+        ),
+        "defaultLevel": "warning",
+        "helpUri": "https://github.com/AyushkhatiDev/vibesec#-medium",
+    },
 }
 
 # ── Severity mapping ─────────────────────────────────────────────────────────
