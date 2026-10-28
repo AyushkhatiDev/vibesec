@@ -160,6 +160,7 @@ def check_code(
                 }
             ]
         }
+    """
     # Rules key off file_path for extension / naming checks, so we
     # create a synthetic but realistic path from the filename hint.
     safe_name = os.path.basename(filename) or "untitled.py"
